@@ -77,6 +77,44 @@ exports.verifyOtp = async (req, res) => {
   }
 };
 
+// LOGIN
+exports.studentlogin = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ message: "User not found" });
+
+    if (!user.isVerified)
+      return res.status(400).json({ message: "Please verify your email first" });
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch)
+      return res.status(400).json({ message: "Incorrect password" });
+
+    // const token = jwt.sign(
+    //   { id: user._id },
+    //   process.env.JWT_SECRET,
+    //   { expiresIn: "7d" }
+    // );
+
+    // res.json({
+    //   message: "Login successful",
+    //   token,
+    //   user: {
+    //     id: user._id,
+    //     name: user.name,
+    //     email: user.email,
+    //   },
+    // });
+
+    res.json({ message: "Login successful" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+
 
 
 
