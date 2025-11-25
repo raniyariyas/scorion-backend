@@ -50,6 +50,7 @@ exports.teacherRegistration = async (req, res) => {
 // VERIFY OTP
 // -------------------------
 exports.verifyOtp = async (req, res) => {
+    
   try {
     const { email, otp } = req.body;
 
@@ -80,27 +81,32 @@ exports.teacherLogin = async (req, res) => {
 
     const teacher = await Teacher.findOne({ email });
     if (!teacher) return res.status(400).json({ message: "Teacher not found" });
-    if (!teacher.isVerified) return res.status(400).json({ message: "Please verify your email first" });
+    if (!teacher.isVerified) 
+        return res.status(400).json({ message: "Please verify your email first" });
 
     const isMatch = await bcrypt.compare(password, teacher.password);
-    if (!isMatch) return res.status(400).json({ message: "Incorrect password" });
+    if (!isMatch) 
+    res.status(400).json({ message: "Incorrect password" });
 
-    // Generate JWT token
-    const token = jwt.sign(
-      { id: teacher._id, email: teacher.email },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" }
-    );
+    // // Generate JWT token
+    // const token = jwt.sign(
+    //   { id: teacher._id, email: teacher.email },
+    //   process.env.JWT_SECRET,
+    //   { expiresIn: "7d" }
+    // // );
 
-    res.status(200).json({
-      message: "Login successful",
-      token,
-      teacher: {
-        id: teacher._id,
-        name: teacher.name,
-        email: teacher.email
-      }
-    });
+    //   res.json({
+    //   message: "Login successful",
+    //   token,
+    //   teacher: {
+    //     id: teacher._id,
+    //     name: teacher.name,
+    //     email: teacher.email
+    //   }
+    // });
+
+
+    res.status(200).json({ message: "Login successful" });
   } catch (err) {
     console.log("Teacher login error:", err);
     res.status(500).json({ message: "Server error", error: err.message });
