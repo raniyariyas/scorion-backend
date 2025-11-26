@@ -6,6 +6,7 @@ const {
   teacherLogin
 } = require("../Controllers/teacherController");
 
+const authTeacher = require("../Middleware/authMiddleware");
 
 // Register
 router.post("/register", teacherRegistration);

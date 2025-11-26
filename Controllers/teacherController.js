@@ -88,22 +88,22 @@ exports.teacherLogin = async (req, res) => {
     if (!isMatch) 
     res.status(400).json({ message: "Incorrect password" });
 
-    // // Generate JWT token
-    // const token = jwt.sign(
-    //   { id: teacher._id, email: teacher.email },
-    //   process.env.JWT_SECRET,
-    //   { expiresIn: "7d" }
-    // // );
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: teacher._id,
+        role:"teacher" },
+      process.env.JWT_SECRET,
+    );
 
-    //   res.json({
-    //   message: "Login successful",
-    //   token,
-    //   teacher: {
-    //     id: teacher._id,
-    //     name: teacher.name,
-    //     email: teacher.email
-    //   }
-    // });
+      res.json({
+      message: "Login successful",
+      token,
+      teacher: {
+        id: teacher._id,
+        name: teacher.name,
+        email: teacher.email
+      }
+    });
 
 
     res.status(200).json({ message: "Login successful" });
