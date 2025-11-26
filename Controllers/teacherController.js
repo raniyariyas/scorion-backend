@@ -112,3 +112,61 @@ exports.teacherLogin = async (req, res) => {
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };
+
+exports.teacherForgotPassword = async (req, res) => {
+    try {
+        const { email } = req.body;
+        const student = await Student.findOne({ email });
+        if (!student) return res.status(404).json({ message: "Student not found" });
+
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        student.otp = otp;
+        student.otpExpiry = Date.now() + 5 * 60 * 1000; // 5 minutes
+        await student.save();
+
+        await emailtransporter(email, "Password Reset OTP", `Your OTP: ${otp}`);
+
+        res.json({ message: "OTP sent to your email" });
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({ message: "Server error" });
+    }
+};
+
+
+
+exports.verifyTeacherForgotOtp = async (req, res) => {
+    try {
+        const { email, otp } = req.body;
+        const teacher = await Teacher.findOne({ email });
+        if (!teacher) return res.status(404).json({ message: "Teacher not found" });
+
+        if (teacher.otp !== otp || teacher.otpExpiry < Date.now()) {
+            return res.status(400).json({ message: "Invalid or expired OTP" });
+        }
+
+        res.json({ message: "OTP verified successfully" });
+    } catch (err) {
+        res.status(500).json({ message: "Server error" });
+    }
+};
+
+
+exports.resetTeacherPassword = async (req, res) => {
+    try {
+        const { email, newPassword } = req.body;
+        const teacher = await Teacher.findOne({ email });
+        if (!teacher) return res.status(404).json({ message: "Teacher not found" });
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        teacher.password = hashedPassword;
+        teacher.otp = undefined;
+        teacher.otpExpiry = undefined;
+
+        await teacher.save();
+
+        res.json({ message: "Password reset successful" });
+    } catch (err) {
+        res.status(500).json({ message: "Server error" });
+    }
+};

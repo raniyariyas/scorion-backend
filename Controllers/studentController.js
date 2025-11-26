@@ -189,4 +189,38 @@ exports.resetPassword = async (req, res) => {
         res.status(500).json({ message: "Server error" });
     }
 };
+exports.studentVerifyForgotOtp = async (req, res) => {
+    try {
+        const { email, otp } = req.body;
+        const student = await Student.findOne({ email });
+        if (!student) return res.status(404).json({ message: "Student not found" });
+
+        if (student.otp !== otp || student.otpExpiry < Date.now()) {
+            return res.status(400).json({ message: "Invalid or expired OTP" });
+        }
+
+        res.json({ message: "OTP verified successfully" });
+    } catch (err) {
+        res.status(500).json({ message: "Server error" });
+    }
+};
+
+exports.studentResetPassword = async (req, res) => {
+    try {
+        const { email, newPassword } = req.body;
+        const student = await Student.findOne({ email });
+        if (!student) return res.status(404).json({ message: "Student not found" });
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        student.password = hashedPassword;
+        student.otp = undefined;
+        student.otpExpiry = undefined;
+
+        await student.save();
+
+        res.json({ message: "Password reset successful" });
+    } catch (err) {
+        res.status(500).json({ message: "Server error" });
+    }
+};
 

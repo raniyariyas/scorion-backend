@@ -131,3 +131,58 @@ exports.adminLogin = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+exports.adminForgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const admin = await Admin.findOne({ email });
+    if (!admin) return res.status(404).json({ message: "Admin not found" });
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    admin.otp = otp;
+    admin.otpExpiry = Date.now() + 5 * 60 * 1000; // 5 min
+    await admin.save();
+
+    await emailtransporter(email, "Admin Password Reset OTP", `Your OTP: ${otp}`);
+
+    res.json({ message: "OTP sent to your email" });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+exports.verifyAdminForgotOtp = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    const admin = await Admin.findOne({ email });
+    if (!admin) return res.status(404).json({ message: "Admin not found" });
+
+    if (admin.otp !== otp || admin.otpExpiry < Date.now()) {
+      return res.status(400).json({ message: "Invalid or expired OTP" });
+    }
+
+    res.json({ message: "OTP verified successfully" });
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+exports.resetAdminPassword = async (req, res) => {
+  try {
+    const { email, newPassword } = req.body;
+    const admin = await Admin.findOne({ email });
+    if (!admin) return res.status(404).json({ message: "Admin not found" });
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    admin.password = hashedPassword;
+    admin.otp = undefined;
+    admin.otpExpiry = undefined;
+
+    await admin.save();
+
+    res.json({ message: "Password reset successful" });
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+};

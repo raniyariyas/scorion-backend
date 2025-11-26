@@ -20,7 +20,6 @@ router.post("/login", studentlogin);
 router.post('/forgot-password',forgotPassword);
 router.post("/forgot-password/verify-otp", verifyForgotOtp);
 router.post("/reset-password", resetPassword);
- 
 
 
 // login
