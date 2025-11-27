@@ -3,6 +3,7 @@ const cors = require("cors");
 const mongoose=require('mongoose')
 const connectDB = require("./config/db");
 const dotenv = require("dotenv");
+
 dotenv.config();
 
 const userRoutes=require('./routes/userRoutes')
@@ -19,7 +20,7 @@ mongoose
 
 
 // Middlewares
-// app.use(cors());
+app.use(cors());
 app.use(express.json());
 
 // Routes

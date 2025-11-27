@@ -1,4 +1,5 @@
 const Admin = require("../models/admin");
+const Teacher=require('../Models/Teacher')
 const bcrypt = require("bcryptjs");
 const emailtransporter = require("../config/mail"); // your existing mail function
 
@@ -184,5 +185,142 @@ exports.resetAdminPassword = async (req, res) => {
     res.json({ message: "Password reset successful" });
   } catch (err) {
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+// add teacher
+exports.addTeacher = async (req, res) => {
+  try {
+    const adminId = req.user.id; // coming from JWT
+    const {
+      name,
+      email,
+      phone,
+      salary,
+      department,
+      subject,
+      highestQualification,
+      teachingExperience,
+      joinDate,
+      employmentStatus
+    } = req.body;
+
+    // Find admin
+    const admin = await Admin.findById(adminId);
+    if (!admin) return res.status(404).json({ message: "Admin not found" });
+
+    // dbsave
+    const newTeacher = new Teacher({
+      name,
+      email,
+      phone,
+      salary,
+      department,
+      subject,
+      highestQualification,
+      teachingExperience,
+      joinDate,
+      employmentStatus
+    });
+
+
+    await newTeacher.save();
+
+     return res.status(201).json({
+      message: "Teacher added successfully",
+      teachers: newTeacher
+    });
+
+   } catch (error) {
+    return res.status(500).json({
+      message: "Error adding teacher",
+      error: error.message
+    });
+  }
+};
+
+// EDIT TEACHER
+exports.editTeacher = async (req, res) => {
+  try {
+    const adminId = req.user.id; // from JWT
+    const teacherId = req.params.Id; // teacher subdocument _id
+    const updateData = req.body; // fields to update
+
+    // Find admin
+    const admin = await Admin.findById(adminId);
+    if (!admin) return res.status(404).json({ message: "Admin not found" });
+
+    // Find teacher inside admin.teachers array
+    const teacher =await Teacher.findById(teacherId);
+
+    console.log(teacher,"jjjj");
+    
+    if (!teacher) return res.status(404).json({ message: "Teacher not found" });
+
+    const updateddata=await Teacher.findByIdAndUpdate(teacherId,updateData,{new:true});
+  
+    await updateddata.save();
+
+    return res.status(200).json({
+      message: "Teacher updated successfully",
+      teacher
+    });
+
+  } catch (error) {
+    return res.status(500).json({ message: "Error updating teacher", error: error.message });
+  }
+};
+
+// list teachers
+exports.listTeachers = async (req, res) => {
+  try {
+    const adminId = req.user.id; // from JWT token
+
+    // Find admin
+    const admin = await Admin.findById(adminId);
+
+    if (!admin) return res.status(404).json({ message: "Admin not found" });
+
+    const teachers = await Teacher.find();
+
+    // Return teachers array
+    return res.status(200).json({
+      message: "Teachers fetched successfully",
+      teachers
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      message: "Error fetching teachers",
+      error: error.message
+    });
+  }
+};
+
+
+// get a single techer
+
+// GET SINGLE TEACHER
+exports.getTeacher = async (req, res) => {
+  try {
+    const adminId = req.user.id; // from JWT
+    const teacherId = req.params.teacherId; // teacher subdocument _id
+
+    // Find admin
+    const admin = await Admin.findById(adminId);
+    if (!admin) return res.status(404).json({ message: "Admin not found" });
+
+    // Find teacher inside admin.teachers array
+    const teacher = admin.teachers.id(teacherId);
+    if (!teacher) return res.status(404).json({ message: "Teacher not found" });
+
+    return res.status(200).json({
+      message: "Teacher fetched successfully",
+      teacher
+    });
+
+  } catch (error) {
+    return res.status(500).json({ message: "Error fetching teacher", error: error.message });
   }
 };
