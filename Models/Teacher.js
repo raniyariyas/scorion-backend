@@ -19,7 +19,11 @@ const teacherSchema = new mongoose.Schema({
     default: "Active"
   },
   isBlocked: { type: Boolean, default: false },
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
+    password: { type: String },
+  resetPasswordToken: String,  
+  resetPasswordExpires: Date 
+
 });
 
 

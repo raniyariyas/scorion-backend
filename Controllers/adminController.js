@@ -2,7 +2,11 @@ const Admin = require("../models/admin");
 const Teacher=require('../Models/Teacher')
 const Student=require('../Models/User')
 const bcrypt = require("bcryptjs");
+const crypto = require("crypto");
 const emailtransporter = require("../config/mail"); // your existing mail function
+const nodemailer = require("nodemailer");
+const dotenv = require("dotenv");
+dotenv.config();
 
 // ADMIN REGISTRATION
 exports.adminRegistration = async (req, res) => {
@@ -32,6 +36,7 @@ exports.adminRegistration = async (req, res) => {
     });
 
     await newAdmin.save();
+
 
     // Send OTP to admin email
     emailtransporter(email, otp);
@@ -209,8 +214,11 @@ exports.addTeacher = async (req, res) => {
 
     // Find admin
     const admin = await Admin.findById(adminId);
-    if (!admin) return res.status(404).json({ message: "Admin not found" });
 
+    if (!admin){
+       return res.status(404).json({ message: "Admin not found" });
+    } 
+        const token = crypto.randomBytes(20).toString('hex');
     // dbsave
     const newTeacher = new Teacher({
       name,
@@ -222,11 +230,33 @@ exports.addTeacher = async (req, res) => {
       highestQualification,
       teachingExperience,
       joinDate,
-      employmentStatus
+      employmentStatus,
+      resetPasswordToken: token,
+      resetPasswordExpires: Date.now() + 3600000 // 1 hour
+    });
+    await newTeacher.save();
+
+
+    // email send link
+
+   const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      }
+    });
+
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: "set your password",
+       text: `Hello ${name},\n\nPlease click the link below to set your password:\n\nhttp://localhost:5000/api/teacher/set-password/${token}\n\nThis link will expire in 1 hour.`
+
     });
 
 
-    await newTeacher.save();
+
 
      return res.status(201).json({
       message: "Teacher added successfully",
@@ -389,10 +419,17 @@ exports.addStudent = async (req, res) => {
       semester,
       status,
       enrollmentDate
+
     });
 
     await newStudent.save();
     console.log(newStudent,"lkkkkkkkkkkkkkk");
+    
+
+
+
+
+
     
 
     return res.status(201).json({

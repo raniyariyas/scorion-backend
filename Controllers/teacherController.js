@@ -6,44 +6,28 @@ const sendEmail = require("../config/mail");
 // -------------------------
 // TEACHER REGISTRATION
 // -------------------------
-exports.teacherRegistration = async (req, res) => {
-  try {
-    console.log("kkkkkkkkkk");
-    
-    const { name, email, password } = req.body;
+exports.teacherpassword = async (req, res) => {
+ try {
+    const { token } = req.params;
+    const { password } = req.body;
+    const teacher = await Teacher.findOne({ resetPasswordToken: token, resetPasswordExpires: { $gt: Date.now() } });
 
-    // Check if teacher already exists
-    const existing = await Teacher.findOne({ email });
-    if (existing) {
-      return res.status(400).json({ message: "Teacher already exists" });
+    if (!teacher) {
+      return res.status(400).json({ message: "Invalid or expired token" });
     }
-
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
+    teacher.password = hashedPassword;
+    teacher.resetPasswordToken = undefined;
+    teacher.resetPasswordExpires = undefined;
+    teacher.isVerified = true;
 
-    // Generate OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpExpiry = Date.now() + 10 * 60 * 1000; // 10 minutes
-
-    // Create teacher
-    const newTeacher = new Teacher({
-      name,
-      email,
-      password: hashedPassword,
-      otp,
-      otpExpiry
-    });
-
-    // Send OTP via email
-    await sendEmail(email, otp);
-
-    await newTeacher.save();
-
-    res.status(201).json({ message: "Teacher registered successfully. Check email for OTP." });
+    await teacher.save();
+    res.status(200).json({ message: "Password created successfully!" });
   } catch (err) {
-    console.log("Teacher registration error:", err);
+    console.log("Password creation error:", err);
     res.status(500).json({ message: "Server error", error: err.message });
   }
+
 };
 
 // -------------------------
