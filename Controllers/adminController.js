@@ -359,6 +359,8 @@ exports.unblockTeacher = async (req, res) => {
 //add student
 // add student
 exports.addStudent = async (req, res) => {
+  console.log("dfgbbfggggggggggggggggggggggggggg");
+  
   try {
     const adminId = req.user.id; // coming from JWT
     const {
@@ -379,7 +381,7 @@ exports.addStudent = async (req, res) => {
     if (!admin) return res.status(404).json({ message: "Admin not found" });
 
     // db save
-    const newStudent = new student({
+    const newStudent = new Student({
       name,
       email,
       phone,
@@ -390,6 +392,8 @@ exports.addStudent = async (req, res) => {
     });
 
     await newStudent.save();
+    console.log(newStudent,"lkkkkkkkkkkkkkk");
+    
 
     return res.status(201).json({
       message: "Student added successfully",
@@ -517,5 +521,84 @@ exports.unblockStudent = async (req, res) => {
     }
 };
 
+// SEARCH TEACHERS
+exports.searchteachers = async (req, res) => {
+  try {
+    const { search, status, department } = req.query;
 
+    let filter = {};
 
+    if (search && search.trim() !== "") {
+      filter.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+        { subject: { $regex: search, $options: "i" } }
+      ];
+    }
+
+    if (status && status !== "All Status") {
+      filter.employmentStatus = status;
+    }
+
+    if (department && department !== "All Departments") {
+      filter.department = department;
+    }
+
+    const teachers = await Teacher.find(filter);
+
+    res.status(200).json({
+      total: teachers.length,
+      teachers
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      message: "Error searching teachers",
+      error: error.message
+    });
+  }
+};
+
+// SEARCH STUDENTS
+
+exports.searchstudents = async (req, res) => {
+  try {
+    const { search, status, course } = req.query;
+
+    let filter = {};
+
+    // 🔍 Search by name, email, course
+    if (search && search.trim() !== "") {
+      filter.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+        { course: { $regex: search, $options: "i" } }
+      ];
+    }
+
+    // 🎯 Status Filter (Active, Inactive)
+    if (status && status !== "All Status") {
+      filter.status = status;
+    }
+
+    // 🎓 Course Filter
+    if (course && course !== "All Courses") {
+      filter.course = course;
+    }
+
+    // Fetch students from DB
+    const students = await Student.find(filter);
+
+    // Response format identical to teacher
+    res.status(200).json({
+      total: students.length,
+      students
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      message: "Error searching students",
+      error: error.message
+    });
+  }
+};

@@ -19,7 +19,11 @@ const {
   blockStudent,
   unblockStudent,
   addStudent,
-  editStudent
+  editStudent,
+  getAllTeachers,
+  getAllStudents,   
+  searchstudents,
+  searchteachers
   
 
 
@@ -56,5 +60,9 @@ router.get("/students", verifyToken("admin"), listStudents);
 router.put("/block-student/:Id", verifyToken("admin"), blockStudent);
 router.put("/unblock-student/:Id", verifyToken("admin"), unblockStudent);
 
+// search box,status,dept
+router.get("/teachersearch", verifyToken("admin"),searchteachers);
+//search for students
+router.get("/studentsearch", verifyToken("admin"),searchstudents);
 
 module.exports = router;
