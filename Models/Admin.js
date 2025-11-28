@@ -15,6 +15,7 @@ const teacherSubSchema = new mongoose.Schema({
     enum: ["Active", "Inactive", "On Leave", "Resigned"],
     default: "Active"
   },
+
   createdAt: { type: Date, default: Date.now }
 });
 

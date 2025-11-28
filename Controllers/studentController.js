@@ -1,4 +1,4 @@
-const User = require("../models/User");
+const User=require('../Models/User')
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const emailtransporter = require("../config/mail");
@@ -223,4 +223,6 @@ exports.studentResetPassword = async (req, res) => {
         res.status(500).json({ message: "Server error" });
     }
 };
+
+
 

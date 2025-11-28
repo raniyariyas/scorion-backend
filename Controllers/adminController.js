@@ -1,5 +1,6 @@
 const Admin = require("../models/admin");
 const Teacher=require('../Models/Teacher')
+const Student=require('../Models/User')
 const bcrypt = require("bcryptjs");
 const emailtransporter = require("../config/mail"); // your existing mail function
 
@@ -299,28 +300,222 @@ exports.listTeachers = async (req, res) => {
 };
 
 
-// get a single techer
+// block
 
-// GET SINGLE TEACHER
-exports.getTeacher = async (req, res) => {
+exports.blockTeacher = async (req, res) => {
+    try {
+        const teacherId = req.params.Id;
+
+        const teacher = await Teacher.findByIdAndUpdate(
+            teacherId,
+            { isBlocked: true },
+            { new: true }
+        );
+
+        if (!teacher) {
+            return res.status(404).json({ message: "Teacher not found" });
+        }
+
+        return res.status(200).json({
+            message: "Teacher blocked successfully",
+            teacher
+        });
+
+    } catch (error) {
+        return res.status(500).json({
+            message: "Error blocking teacher",
+            error: error.message
+        });
+    }
+};
+
+exports.unblockTeacher = async (req, res) => {
+    try {
+        const teacherId = req.params.Id;
+
+        const teacher = await Teacher.findByIdAndUpdate(
+            teacherId,
+            { isBlocked: false },
+            { new: true }
+        );
+
+        if (!teacher) {
+            return res.status(404).json({ message: "Teacher not found" });
+        }
+
+        return res.status(200).json({
+            message: "Teacher unblocked successfully",
+            teacher
+        });
+
+    } catch (error) {
+        return res.status(500).json({
+            message: "Error unblocking teacher",
+            error: error.message
+        });
+    }
+};
+ 
+//add student
+// add student
+exports.addStudent = async (req, res) => {
   try {
-    const adminId = req.user.id; // from JWT
-    const teacherId = req.params.teacherId; // teacher subdocument _id
+    const adminId = req.user.id; // coming from JWT
+    const {
+      name,
+      email,
+      phone,
+      course,
+      semester,
+      status,
+      enrollmentDate
+    } = req.body;
+
+    console.log(req.body,"lklllk");
+    
 
     // Find admin
     const admin = await Admin.findById(adminId);
     if (!admin) return res.status(404).json({ message: "Admin not found" });
 
-    // Find teacher inside admin.teachers array
-    const teacher = admin.teachers.id(teacherId);
-    if (!teacher) return res.status(404).json({ message: "Teacher not found" });
+    // db save
+    const newStudent = new student({
+      name,
+      email,
+      phone,
+      course,
+      semester,
+      status,
+      enrollmentDate
+    });
 
-    return res.status(200).json({
-      message: "Teacher fetched successfully",
-      teacher
+    await newStudent.save();
+
+    return res.status(201).json({
+      message: "Student added successfully",
+      students: newStudent
     });
 
   } catch (error) {
-    return res.status(500).json({ message: "Error fetching teacher", error: error.message });
+    return res.status(500).json({
+      message: "Error adding student",
+      error: error.message
+    });
   }
 };
+
+
+      
+// EDIT STUDENT
+exports.editStudent = async (req, res) => {
+  try {
+    const adminId = req.user.id; // from JWT
+    const studentId = req.params.Id; // student _id
+    const updateData = req.body; // fields to update
+
+    // Find admin
+    const admin = await Admin.findById(adminId);
+    if (!admin) return res.status(404).json({ message: "Admin not found" });
+
+    // Find student
+    const Student = await student.findById(studentId);
+    if (!Student) return res.status(404).json({ message: "Student not found" });
+
+    // Update student
+    const updatedStudent = await student.findByIdAndUpdate(studentId, updateData, { new: true });
+    await updatedStudent.save();
+
+    return res.status(200).json({
+      message: "Student updated successfully",
+      student: updatedStudent
+    });
+
+  } catch (error) {
+    return res.status(500).json({ message: "Error updating student", error: error.message });
+  }
+};
+
+// LIST STUDENTS
+exports.listStudents = async (req, res) => {
+  try {
+    const adminId = req.user.id; // from JWT token
+
+    // Find admin
+    const admin = await Admin.findById(adminId);
+    if (!admin) return res.status(404).json({ message: "Admin not found" });
+
+    // Fetch all students
+    const students = await Student.find();
+
+    // Return students array
+    return res.status(200).json({
+      message: "Students fetched successfully",
+      students
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      message: "Error fetching students",
+      error: error.message
+    });
+  }
+};
+
+// BLOCK STUDENT
+exports.blockStudent = async (req, res) => {
+    try {
+        const studentId = req.params.Id;
+
+        const Student = await student.findByIdAndUpdate(
+            studentId,
+            { isBlocked: true },
+            { new: true }
+        );
+
+        if (!Student) {
+            return res.status(404).json({ message: "Student not found" });
+        }
+
+        return res.status(200).json({
+            message: "Student blocked successfully",
+            Student
+        });
+
+    } catch (error) {
+        return res.status(500).json({
+            message: "Error blocking student",
+            error: error.message
+        });
+    }
+};
+
+// UNBLOCK STUDENT
+exports.unblockStudent = async (req, res) => {
+    try {
+        const studentId = req.params.Id;
+
+        const student = await Student.findByIdAndUpdate(
+            studentId,
+            { isBlocked: false },
+            { new: true }
+        );
+
+        if (!student) {
+            return res.status(404).json({ message: "Student not found" });
+        }
+
+        return res.status(200).json({
+            message: "Student unblocked successfully",
+            student
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            message: "Error unblocking student",
+            error: error.message
+        });
+    }
+};
+
+
+
