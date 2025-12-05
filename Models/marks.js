@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 
 const markSchema = new mongoose.Schema({
   student: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-  semester: { type: Number, required: true, min: 1, max: 8 },
+  semester: { type: String, required: true, min: 1, max: 8 },
   academicYear: { type: String },
   attendancePercentage: { type: Number, min: 0, max: 100 },
   subjects: [

@@ -232,6 +232,7 @@ exports.addMark = async (req, res) => {
 //   }
 // };
 
+//by fasal 
 
 exports.listMarks = async (req, res) => {
   try {    
@@ -243,3 +244,63 @@ exports.listMarks = async (req, res) => {
   }
 };
 
+
+exports.searchstudentsteacher=async(req,res)=>{
+ try {
+    const { search, semester, status ,course } = req.query;
+
+    // Build a dynamic query object
+    const query = {};
+
+    if (search) {
+      // Case-insensitive search on name
+      query.name = { $regex: search, $options: "i" };
+    }
+
+    if (semester) {
+      query.semester = semester;
+    }
+
+    if (status) {
+      query.status = status;
+    }
+
+
+    if (course) {
+      query.course = course;
+    }
+
+    const students = await User.find(query).sort({ name: 1 });
+
+    res.status(200).json({ students });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+
+
+}
+
+// Update a student's marks
+exports.updateMarks = async (req, res) => {
+  try {
+    const { id } = req.params; // the mark record ID
+    const { subjects, totalGrade, SGPA } = req.body; // data from frontend
+
+    // Find and update
+    const updatedMark = await Mark.findByIdAndUpdate(
+      id,
+      { subjects, totalGrade, SGPA },
+      { new: true } // returns the updated document
+    );
+
+    if (!updatedMark) {
+      return res.status(404).json({ message: "Mark record not found" });
+    }
+
+    res.status(200).json({ message: "Marks updated successfully", updatedMark });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};

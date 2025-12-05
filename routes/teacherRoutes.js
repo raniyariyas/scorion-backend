@@ -10,10 +10,13 @@ const {
   teacherpassword,
   addMark,
   getMarks,
-  listMarks
+  listMarks,
+  searchstudentsteacher,
+  updateMarks
 } = require("../Controllers/teacherController");
 
 const authTeacher = require("../Middleware/authMiddleware");
+const { searchstudents } = require("../Controllers/adminController");
 
 // Register
 router.post("/createpassword/:token", teacherpassword);
@@ -33,6 +36,8 @@ router.post("/verify-forgot-otp", verifyTeacherForgotOtp);        // Step 2: Ver
 router.post("/add-mark", addMark);
 //get student marks
 router.get("/marks", listMarks);
-// router.get("/marks/:Id", getMarks);
+router.get("/studentsearch/",searchstudentsteacher);
+// Update marks
+router.put("/update/:id",updateMarks);
 
 module.exports = router;
