@@ -7,7 +7,36 @@ dotenv.config();
 
 
 // user side
+//user regustarion
+exports.studentCreatePassword = async (req, res) => {
+  try {
+    const { token } = req.params;
+    const { password } = req.body;
 
+    const student = await User.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpires: { $gt: Date.now() }
+    });
+
+    if (!student) {
+      return res.status(400).json({ message: "Invalid or expired token" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    student.password = hashedPassword;
+    student.resetPasswordToken = undefined;
+    student.resetPasswordExpires = undefined;
+    student.isVerified = true;
+
+    await student.save();
+
+    res.status(200).json({ message: "Password created successfully!" });
+
+  } catch (err) {
+    console.log("Password creation error:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
 
 exports.studentregistration=async(req,res)=>{
         try {

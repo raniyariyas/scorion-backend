@@ -386,31 +386,26 @@ exports.unblockTeacher = async (req, res) => {
     }
 };
  
-//add student
 // add student
-exports.addStudent = async (req, res) => {
-  console.log("dfgbbfggggggggggggggggggggggggggg");
-  
-  try {
-    const adminId = req.user.id; // coming from JWT
-    const {
-      name,
-      email,
-      phone,
-      course,
-      semester,
-      status,
-      enrollmentDate
-    } = req.body;
 
-    console.log(req.body,"lklllk");
+exports.addStudent = async (req, res) => {
+  try {
+    const adminId = req.user.id; // JWT admin ID
+    const { name, email, phone, course, semester, status } = req.body;
     
 
-    // Find admin
+    // Check admin exists
     const admin = await Admin.findById(adminId);
+    console.log(admin,",,,,,,,,,,,,,,");
+    
     if (!admin) return res.status(404).json({ message: "Admin not found" });
 
-    // db save
+    // Generate token for student password
+    const token = crypto.randomBytes(20).toString("hex");
+    console.log(token,"mmmmmmmmmmmmmmmmmmmmmm");
+    
+
+    // Create student
     const newStudent = new Student({
       name,
       email,
@@ -418,35 +413,41 @@ exports.addStudent = async (req, res) => {
       course,
       semester,
       status,
-      enrollmentDate
-
+      resetPasswordToken: token,
+      resetPasswordExpires: Date.now() + 3600000 // 1 hour
     });
 
     await newStudent.save();
-    console.log(newStudent,"lkkkkkkkkkkkkkk");
-    
-
-
-
-
 
     
+
+    // Send email with backend link
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      }
+    });
+
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: "Set Your Student Account Password",
+      text: `Hello ${name},\n\nPlease click the link below to set your password:\n\nhttp://localhost:5000/api/student/createpassword/${token}\n\nThis link will expire in 1 hour.`
+    });
 
     return res.status(201).json({
-      message: "Student added successfully",
-      students: newStudent
+      message: "Student added successfully & email sent",
+      student: newStudent
     });
 
   } catch (error) {
-    return res.status(500).json({
-      message: "Error adding student",
-      error: error.message
-    });
+    return res.status(500).json({ message: "Error adding student", error: error.message });
   }
 };
 
 
-      
 // EDIT STUDENT
 exports.editStudent = async (req, res) => {
   try {

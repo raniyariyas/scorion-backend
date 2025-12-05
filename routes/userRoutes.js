@@ -1,12 +1,14 @@
 const express = require("express");
 const router = express.Router();
+
 const {
    studentregistration,
    verifyOtp,
    studentlogin,
    forgotPassword,
    verifyForgotOtp,
-   resetPassword
+   resetPassword,
+   studentCreatePassword
 
    
    } = require("../Controllers/studentController");
@@ -20,6 +22,9 @@ router.post("/login", studentlogin);
 router.post('/forgot-password',forgotPassword);
 router.post("/forgot-password/verify-otp", verifyForgotOtp);
 router.post("/reset-password", resetPassword);
+// router.get("/set-password/:token", studentController.setPasswordPage);
+// router.post("/createpassword/:token", studentController.savePassword);
+router.post("/createpassword/:token", studentCreatePassword);
 
 
 // login

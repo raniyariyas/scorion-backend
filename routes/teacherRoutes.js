@@ -7,7 +7,10 @@ const {
   teacherForgotPassword,       // ✅ Add this
   verifyTeacherForgotOtp,      // ✅ Add this
   resetTeacherPassword,          // ✅ Add this
-  teacherpassword
+  teacherpassword,
+  addMark,
+  getMarks,
+  listMarks
 } = require("../Controllers/teacherController");
 
 const authTeacher = require("../Middleware/authMiddleware");
@@ -22,8 +25,14 @@ router.post("/verify-otp", verifyOtp);
 router.post("/login", teacherLogin);
 
 // 🔥 Forgot Password Routes
+router.post("/new-password", resetTeacherPassword);               // Step 3: Reset Password
 router.post("/forgot-password", teacherForgotPassword);           // Step 1: Send OTP
 router.post("/verify-forgot-otp", verifyTeacherForgotOtp);        // Step 2: Verify OTP
-router.post("/new-password", resetTeacherPassword);               // Step 3: Reset Password
+
+// add student marks
+router.post("/add-mark", addMark);
+//get student marks
+router.get("/marks", listMarks);
+// router.get("/marks/:Id", getMarks);
 
 module.exports = router;

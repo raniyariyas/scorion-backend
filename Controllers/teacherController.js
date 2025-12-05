@@ -1,6 +1,10 @@
 const Teacher = require("../Models/Teacher");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const Mark = require("../Models/marks");
+const Student = require("../Models/User");
+const User=require("../Models/User")
+
 const sendEmail = require("../config/mail");
 
 // -------------------------
@@ -154,3 +158,88 @@ exports.resetTeacherPassword = async (req, res) => {
         res.status(500).json({ message: "Server error" });
     }
 };
+
+
+// create marks of student
+exports.addMark = async (req, res) => {
+  try {
+    const { studentId, semester, subjects ,attendancePercentage,academicYear ,status } = req.body;
+
+    if (!studentId || !semester || !subjects || subjects.length === 0 || !attendancePercentage || !academicYear || !status) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    // Calculate SGPA and total subjects
+    const totalSubjects = subjects.length;
+    let totalPoints = 0;
+
+    const gradePoints = {
+      "A+": 10, "A": 9, "B": 8, "C": 7, "D": 6, "F": 0
+    };
+
+    subjects.forEach(sub => {
+      totalPoints += gradePoints[sub.grade] || 0;
+    });
+
+    const sgpa = totalSubjects ? (totalPoints / totalSubjects).toFixed(2) : 0;
+
+    // Calculate overall grade
+    const avgPoint = sgpa;
+    let totalGrade = "N/A";
+    if (avgPoint >= 9) totalGrade = "A+";
+    else if (avgPoint >= 8) totalGrade = "A";
+    else if (avgPoint >= 7) totalGrade = "B";
+    else if (avgPoint >= 6) totalGrade = "C";
+    else if (avgPoint >= 5) totalGrade = "D";
+    else totalGrade = "F";
+
+    const mark = new Mark({
+      student: studentId,
+      semester,
+      subjects,
+      sgpa,
+      totalSubjects,
+      totalGrade,
+      academicYear,
+      attendancePercentage,
+      status
+    });
+
+    await mark.save();
+
+    res.status(201).json({ message: "Marks added successfully", mark });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Get marks for a student
+// exports.getMarks = async (req, res) => {
+//   try {
+//     const userid = req.params.Id;
+//     console.log(userid,"hghf");
+    
+
+//     const marks = await Mark.find({ student: userid }).populate("student", "name email course semester");
+//     console.log(marks,"uiuii");
+    
+
+//     res.status(200).json({ marks });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ message: "Server error" });
+//   }
+// };
+
+
+exports.listMarks = async (req, res) => {
+  try {    
+    const marks = await Mark.find({}).populate("student", "name email course");    
+    res.status(200).json({ marks });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
