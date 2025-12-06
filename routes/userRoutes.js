@@ -22,9 +22,11 @@ router.post("/login", studentlogin);
 router.post('/forgot-password',forgotPassword);
 router.post("/forgot-password/verify-otp", verifyForgotOtp);
 router.post("/reset-password", resetPassword);
+router.post("/createpassword/:token", studentCreatePassword);
+
+
 // router.get("/set-password/:token", studentController.setPasswordPage);
 // router.post("/createpassword/:token", studentController.savePassword);
-router.post("/createpassword/:token", studentCreatePassword);
 
 
 // login

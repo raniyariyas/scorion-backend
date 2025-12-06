@@ -23,7 +23,8 @@ const {
   getAllTeachers,
   getAllStudents,   
   searchstudents,
-  searchteachers
+  searchteachers,
+  resendPasswordOtp
   
 
 
@@ -41,9 +42,15 @@ router.post("/verify-otp", verifyAdminOtp);
 router.post("/login", adminLogin);
 
 //  Forgot Password Routes
-router.post("/forgot-password", adminForgotPassword);           // Send OTP
-router.post("/verify-forgot-otp", verifyAdminForgotOtp);        // Verify OTP
+router.post("/forgot-password", adminForgotPassword);   
+          // Send OTP forgot password
+router.post("/verify-forgot-otp", verifyAdminForgotOtp);  
+      // Verify OTP
 router.post("/new-password", resetAdminPassword);   
+
+// route for resend password otp
+
+router.post("/resend-password-otp", resendPasswordOtp);
 
 //teacher routes
 

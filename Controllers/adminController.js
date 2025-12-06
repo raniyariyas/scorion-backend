@@ -11,6 +11,8 @@ dotenv.config();
 // ADMIN REGISTRATION
 exports.adminRegistration = async (req, res) => {
   try {
+    console.log("register");
+    
     const { name, email, password } = req.body;
 
     // Check if admin already exists
@@ -37,12 +39,11 @@ exports.adminRegistration = async (req, res) => {
 
     await newAdmin.save();
 
-
     // Send OTP to admin email
     emailtransporter(email, otp);
 
     res.status(201).json({
-      message: "Admin registered successfully. Check your email for OTP.",
+      message: "Admin registered successfully. Check your email for OTP." ,success:true,
     });
   } catch (err) {
     console.log(err);
@@ -80,7 +81,7 @@ exports.verifyAdminOtp = async (req, res) => {
 
     await admin.save();
 
-    res.json({ message: "OTP verified successfully!" });
+    res.json({ message: "OTP verified successfully!" ,success:true});
 
   } catch (err) {
     console.error("OTP verification error:", err);
@@ -193,6 +194,35 @@ exports.resetAdminPassword = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+
+// resend password otp
+
+exports.resendPasswordOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    const admin = await Admin.findOne({ email });
+    if (!admin) {
+      return res.status(404).json({ message: "Admin not found" });
+    }
+
+    const newOtp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    admin.otp = newOtp;
+    admin.otpExpiry = Date.now() + 5 * 60 * 1000; // 5 minutes
+    await admin.save();
+
+    // TODO: send OTP via email
+    console.log("Resent OTP:", newOtp);
+
+    res.json({ message: "OTP resent successfully", otp: newOtp });
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+
 
 
 // add teacher
