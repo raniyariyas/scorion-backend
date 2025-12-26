@@ -54,6 +54,8 @@ exports.adminRegistration = async (req, res) => {
 exports.verifyAdminOtp = async (req, res) => {
   try {
     const { email, otp } = req.body;
+    console.log(req.body,"llllllllllllllll");
+    
 
     if (!email || !otp) {
       return res.status(400).json({ message: "Email and OTP are required" });
@@ -143,6 +145,8 @@ exports.adminLogin = async (req, res) => {
 exports.adminForgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
+    console.log(email,"lllllllllll");
+    
     const admin = await Admin.findOne({ email });
     if (!admin) return res.status(404).json({ message: "Admin not found" });
 
@@ -153,7 +157,7 @@ exports.adminForgotPassword = async (req, res) => {
 
     await emailtransporter(email, "Admin Password Reset OTP", `Your OTP: ${otp}`);
 
-    res.json({ message: "OTP sent to your email" });
+    res.json({success:true, message: "OTP sent to your email" });
   } catch (err) {
     console.log(err);
     res.status(500).json({ message: "Server error" });
