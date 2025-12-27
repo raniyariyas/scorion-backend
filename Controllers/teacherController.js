@@ -12,6 +12,7 @@ const sendEmail = require("../config/mail");
 // -------------------------
 exports.teacherpassword = async (req, res) => {
  try {
+  console.log("Received request to set teacher password");
     const { token } = req.params;
     const { password } = req.body;
     const teacher = await Teacher.findOne({ resetPasswordToken: token, resetPasswordExpires: { $gt: Date.now() } });
