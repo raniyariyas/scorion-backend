@@ -84,18 +84,19 @@ exports.teacherLogin = async (req, res) => {
       process.env.JWT_SECRET,
     );
 
-      res.json({
+      return res.json({
       message: "Login successful",
       token,
       teacher: {
         id: teacher._id,
         name: teacher.name,
-        email: teacher.email
+        email: teacher.email,
+        department: teacher.department,
+        subject: teacher.subject,
+        qualification: teacher.highestQualification,
+        experience: teacher.teachingExperience
       }
     });
-
-
-    res.status(200).json({ message: "Login successful" });
   } catch (err) {
     console.log("Teacher login error:", err);
     res.status(500).json({ message: "Server error", error: err.message });
@@ -105,15 +106,15 @@ exports.teacherLogin = async (req, res) => {
 exports.teacherForgotPassword = async (req, res) => {
     try {
         const { email } = req.body;
-        const student = await Student.findOne({ email });
-        if (!student) return res.status(404).json({ message: "Student not found" });
+        const teacher = await Teacher.findOne({ email });
+        if (!teacher) return res.status(404).json({ message: "Teacher not found" });
 
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        student.otp = otp;
-        student.otpExpiry = Date.now() + 5 * 60 * 1000; // 5 minutes
-        await student.save();
+        teacher.otp = otp;
+        teacher.otpExpiry = Date.now() + 5 * 60 * 1000; // 5 minutes
+        await teacher.save();
 
-        await emailtransporter(email, "Password Reset OTP", `Your OTP: ${otp}`);
+        await sendEmail(email, "Password Reset OTP", `Your OTP: ${otp}`);
 
         res.json({ message: "OTP sent to your email" });
     } catch (err) {

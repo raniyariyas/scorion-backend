@@ -1,99 +1,13 @@
-const Admin = require("../models/admin");
-const Teacher=require('../Models/Teacher')
-const Student=require('../Models/User')
+const Teacher = require('../Models/Teacher');
+const Student = require('../Models/User');
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
-const emailtransporter = require("../config/mail"); // your existing mail function
+const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
 const dotenv = require("dotenv");
 dotenv.config();
 
-// ADMIN REGISTRATION
-exports.adminRegistration = async (req, res) => {
-  try {
-    console.log("register");
-    
-    const { name, email, password } = req.body;
-
-    // Check if admin already exists
-    const existingAdmin = await Admin.findOne({ email });
-    if (existingAdmin) {
-      return res.status(400).json({ message: "Admin already exists" });
-    }
-
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Generate 6-digit OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpExpiry = Date.now() + 10 * 60 * 1000; // 10 minutes
-
-    // Create admin record
-    const newAdmin = new Admin({
-      name,
-      email,
-      password: hashedPassword,
-      otp,
-      otpExpiry,
-    });
-
-    await newAdmin.save();
-
-    // Send OTP to admin email
-    emailtransporter(email, otp);
-
-    res.status(201).json({
-      message: "Admin registered successfully. Check your email for OTP." ,success:true,
-    });
-  } catch (err) {
-    console.log(err);
-    res.status(500).json({ message: "Server error" });
-  }
-};
-// VERIFY ADMIN OTP
-exports.verifyAdminOtp = async (req, res) => {
-  try {
-    const { email, otp } = req.body;
-    console.log(req.body,"llllllllllllllll");
-    
-
-    if (!email || !otp) {
-      return res.status(400).json({ message: "Email and OTP are required" });
-    }
-  
-    const admin = await Admin.findOne({ email });
-    if (!admin) {
-      return res.status(400).json({ message: "Admin not found" });
-    }
-
-    // Check OTP match
-    if (admin.otp !== otp) {
-      return res.status(400).json({ message: "Invalid OTP" });
-    }
-
-    // Check OTP expiry
-    if (admin.otpExpiry < Date.now()) {
-      return res.status(400).json({ message: "OTP expired" });
-    }
-
-    // Verify admin
-    admin.isVerified = true;
-    admin.otp = null;
-    admin.otpExpiry = null;
-
-    await admin.save();
-
-    res.json({ message: "OTP verified successfully!" ,success:true});
-
-  } catch (err) {
-    console.error("OTP verification error:", err);
-    res.status(500).json({ message: "Server error" });
-  }
-};
-
-const jwt = require("jsonwebtoken");
-
-// ADMIN LOGIN
+// ADMIN LOGIN (Hardcoded from .env)
 exports.adminLogin = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -103,36 +17,25 @@ exports.adminLogin = async (req, res) => {
       return res.status(400).json({ message: "Email and password are required" });
     }
 
-    // Find admin
-    const admin = await Admin.findOne({ email });
-    if (!admin) {
-      return res.status(400).json({ message: "Admin not found" });
+    // Check against .env values
+    if (email !== process.env.ADMIN_EMAIL || password !== process.env.ADMIN_PASSWORD) {
+      return res.status(401).json({ message: "Invalid admin credentials" });
     }
 
-    // Check if admin verified
-    if (!admin.isVerified) {
-      return res.status(400).json({ message: "Please verify your email first" });
-    }
-
-    // Compare password
-    const isMatch = await bcrypt.compare(password, admin.password);
-    if (!isMatch) {
-      return res.status(400).json({ message: "Incorrect password" });
-    }
-
-    // OPTIONAL: Generate JWT Token
+    // Generate JWT Token
     const token = jwt.sign(
-      { id: admin._id, role: "admin" },
+      { id: "SUPER_ADMIN", role: "admin" },
       process.env.JWT_SECRET,
+      { expiresIn: '1d' }
     );
 
     res.json({
       message: "Admin login successful",
       token,
       admin: {
-        id: admin._id,
-        name: admin.name,
-        email: admin.email,
+        id: "SUPER_ADMIN",
+        name: "Administrator",
+        email: process.env.ADMIN_EMAIL,
       }
     });
 
@@ -142,97 +45,9 @@ exports.adminLogin = async (req, res) => {
   }
 };
 
-exports.adminForgotPassword = async (req, res) => {
-  try {
-    const { email } = req.body;
-    console.log(email,"lllllllllll");
-    
-    const admin = await Admin.findOne({ email });
-    if (!admin) return res.status(404).json({ message: "Admin not found" });
-
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    admin.otp = otp;
-    admin.otpExpiry = Date.now() + 5 * 60 * 1000; // 5 min
-    await admin.save();
-
-    await emailtransporter(email, "Admin Password Reset OTP", `Your OTP: ${otp}`);
-
-    res.json({success:true, message: "OTP sent to your email" });
-  } catch (err) {
-    console.log(err);
-    res.status(500).json({ message: "Server error" });
-  }
-};
-
-exports.verifyAdminForgotOtp = async (req, res) => {
-  try {
-    const { email, otp } = req.body;
-    const admin = await Admin.findOne({ email });
-    if (!admin) return res.status(404).json({ message: "Admin not found" });
-
-    if (admin.otp !== otp || admin.otpExpiry < Date.now()) {
-      return res.status(400).json({ message: "Invalid or expired OTP" });
-    }
-
-    res.json({ message: "OTP verified successfully" });
-  } catch (err) {
-    res.status(500).json({ message: "Server error" });
-  }
-};
-
-exports.resetAdminPassword = async (req, res) => {
-  try {
-    const { email, newPassword } = req.body;
-    const admin = await Admin.findOne({ email });
-    if (!admin) return res.status(404).json({ message: "Admin not found" });
-
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-    admin.password = hashedPassword;
-    admin.otp = undefined;
-    admin.otpExpiry = undefined;
-
-    await admin.save();
-
-    res.json({ message: "Password reset successful" });
-  } catch (err) {
-    res.status(500).json({ message: "Server error" });
-  }
-};
-
-
-// resend password otp
-
-exports.resendPasswordOtp = async (req, res) => {
-  try {
-    const { email } = req.body;
-
-    const admin = await Admin.findOne({ email });
-    if (!admin) {
-      return res.status(404).json({ message: "Admin not found" });
-    }
-
-    const newOtp = Math.floor(100000 + Math.random() * 900000).toString();
-
-    admin.otp = newOtp;
-    admin.otpExpiry = Date.now() + 5 * 60 * 1000; // 5 minutes
-    await admin.save();
-
-    // TODO: send OTP via email
-    console.log("Resent OTP:", newOtp);
-
-    res.json({ message: "OTP resent successfully", otp: newOtp });
-  } catch (err) {
-    res.status(500).json({ message: "Server error" });
-  }
-};
-
-
-
-
 // add teacher
 exports.addTeacher = async (req, res) => {
   try {
-    const adminId = req.user.id; // coming from JWT
     const {
       name,
       email,
@@ -246,14 +61,8 @@ exports.addTeacher = async (req, res) => {
       employmentStatus
     } = req.body;
 
-    // Find admin
-    const admin = await Admin.findById(adminId);
-
-    if (!admin){
-       return res.status(404).json({ message: "Admin not found" });
-    } 
-        const token = crypto.randomBytes(20).toString('hex');
-    // dbsave
+    const token = crypto.randomBytes(20).toString('hex');
+    
     const newTeacher = new Teacher({
       name,
       email,
@@ -270,10 +79,7 @@ exports.addTeacher = async (req, res) => {
     });
     await newTeacher.save();
 
-
-    // email send link
-
-   const transporter = nodemailer.createTransport({
+    const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
         user: process.env.EMAIL_USER,
@@ -284,20 +90,16 @@ exports.addTeacher = async (req, res) => {
     await transporter.sendMail({
       from: process.env.EMAIL_USER,
       to: email,
-      subject: "set your password",
-       text: `Hello ${name},\n\nPlease click the link below to set your password:\n\nhttp://localhost:5000/api/teacher/set-password/${token}\n\nThis link will expire in 1 hour.`
-
+      subject: "Welcome to SCORION - Set Your Faculty Password",
+      text: `Hello ${name},\n\nYou have been added as a Faculty Member on SCORION.\n\nPlease click the link below to set your secure password:\n\nhttp://localhost:5173/createpass/${token}\n\nThis link will expire in 1 hour.`
     });
 
-
-
-
-     return res.status(201).json({
+    return res.status(201).json({
       message: "Teacher added successfully",
       teachers: newTeacher
     });
 
-   } catch (error) {
+  } catch (error) {
     return res.status(500).json({
       message: "Error adding teacher",
       error: error.message
@@ -308,28 +110,16 @@ exports.addTeacher = async (req, res) => {
 // EDIT TEACHER
 exports.editTeacher = async (req, res) => {
   try {
-    const adminId = req.user.id; // from JWT
-    const teacherId = req.params.Id; // teacher subdocument _id
-    const updateData = req.body; // fields to update
+    const teacherId = req.params.Id;
+    const updateData = req.body;
 
-    // Find admin
-    const admin = await Admin.findById(adminId);
-    if (!admin) return res.status(404).json({ message: "Admin not found" });
-
-    // Find teacher inside admin.teachers array
-    const teacher =await Teacher.findById(teacherId);
-
-    console.log(teacher,"jjjj");
+    const updateddata = await Teacher.findByIdAndUpdate(teacherId, updateData, { new: true });
     
-    if (!teacher) return res.status(404).json({ message: "Teacher not found" });
-
-    const updateddata=await Teacher.findByIdAndUpdate(teacherId,updateData,{new:true});
-  
-    await updateddata.save();
+    if (!updateddata) return res.status(404).json({ message: "Teacher not found" });
 
     return res.status(200).json({
       message: "Teacher updated successfully",
-      teacher
+      teacher: updateddata
     });
 
   } catch (error) {
@@ -340,21 +130,11 @@ exports.editTeacher = async (req, res) => {
 // list teachers
 exports.listTeachers = async (req, res) => {
   try {
-    const adminId = req.user.id; // from JWT token
-
-    // Find admin
-    const admin = await Admin.findById(adminId);
-
-    if (!admin) return res.status(404).json({ message: "Admin not found" });
-
     const teachers = await Teacher.find();
-
-    // Return teachers array
     return res.status(200).json({
       message: "Teachers fetched successfully",
       teachers
     });
-
   } catch (error) {
     return res.status(500).json({
       message: "Error fetching teachers",
@@ -363,13 +143,10 @@ exports.listTeachers = async (req, res) => {
   }
 };
 
-
-// block
-
+// block teacher
 exports.blockTeacher = async (req, res) => {
     try {
         const teacherId = req.params.Id;
-
         const teacher = await Teacher.findByIdAndUpdate(
             teacherId,
             { isBlocked: true },
@@ -384,7 +161,6 @@ exports.blockTeacher = async (req, res) => {
             message: "Teacher blocked successfully",
             teacher
         });
-
     } catch (error) {
         return res.status(500).json({
             message: "Error blocking teacher",
@@ -393,10 +169,10 @@ exports.blockTeacher = async (req, res) => {
     }
 };
 
+// unblock teacher
 exports.unblockTeacher = async (req, res) => {
     try {
         const teacherId = req.params.Id;
-
         const teacher = await Teacher.findByIdAndUpdate(
             teacherId,
             { isBlocked: false },
@@ -411,7 +187,6 @@ exports.unblockTeacher = async (req, res) => {
             message: "Teacher unblocked successfully",
             teacher
         });
-
     } catch (error) {
         return res.status(500).json({
             message: "Error unblocking teacher",
@@ -421,25 +196,11 @@ exports.unblockTeacher = async (req, res) => {
 };
  
 // add student
-
 exports.addStudent = async (req, res) => {
   try {
-    const adminId = req.user.id; // JWT admin ID
     const { name, email, phone, course, semester, status } = req.body;
-    
-
-    // Check admin exists
-    const admin = await Admin.findById(adminId);
-    console.log(admin,",,,,,,,,,,,,,,");
-    
-    if (!admin) return res.status(404).json({ message: "Admin not found" });
-
-    // Generate token for student password
     const token = crypto.randomBytes(20).toString("hex");
-    console.log(token,"mmmmmmmmmmmmmmmmmmmmmm");
-    
 
-    // Create student
     const newStudent = new Student({
       name,
       email,
@@ -453,9 +214,6 @@ exports.addStudent = async (req, res) => {
 
     await newStudent.save();
 
-    
-
-    // Send email with backend link
     const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
@@ -467,8 +225,8 @@ exports.addStudent = async (req, res) => {
     await transporter.sendMail({
       from: process.env.EMAIL_USER,
       to: email,
-      subject: "Set Your Student Account Password",
-      text: `Hello ${name},\n\nPlease click the link below to set your password:\n\nhttp://localhost:5000/api/student/createpassword/${token}\n\nThis link will expire in 1 hour.`
+      subject: "Set Your Student Account Password - SCORION",
+      text: `Hello ${name},\n\nWelcome to SCORION! Your student account has been created.\n\nPlease click the link below to set your password and activate your account:\n\nhttp://localhost:5173/createpass/${token}\n\nThis link will expire in 1 hour.`
     });
 
     return res.status(201).json({
@@ -481,25 +239,15 @@ exports.addStudent = async (req, res) => {
   }
 };
 
-
 // EDIT STUDENT
 exports.editStudent = async (req, res) => {
   try {
-    const adminId = req.user.id; // from JWT
-    const studentId = req.params.Id; // student _id
-    const updateData = req.body; // fields to update
+    const studentId = req.params.Id;
+    const updateData = req.body;
 
-    // Find admin
-    const admin = await Admin.findById(adminId);
-    if (!admin) return res.status(404).json({ message: "Admin not found" });
-
-    // Find student
-    const Student = await student.findById(studentId);
-    if (!Student) return res.status(404).json({ message: "Student not found" });
-
-    // Update student
-    const updatedStudent = await student.findByIdAndUpdate(studentId, updateData, { new: true });
-    await updatedStudent.save();
+    const updatedStudent = await Student.findByIdAndUpdate(studentId, updateData, { new: true });
+    
+    if (!updatedStudent) return res.status(404).json({ message: "Student not found" });
 
     return res.status(200).json({
       message: "Student updated successfully",
@@ -514,21 +262,11 @@ exports.editStudent = async (req, res) => {
 // LIST STUDENTS
 exports.listStudents = async (req, res) => {
   try {
-    const adminId = req.user.id; // from JWT token
-
-    // Find admin
-    const admin = await Admin.findById(adminId);
-    if (!admin) return res.status(404).json({ message: "Admin not found" });
-
-    // Fetch all students
     const students = await Student.find();
-
-    // Return students array
     return res.status(200).json({
       message: "Students fetched successfully",
       students
     });
-
   } catch (error) {
     return res.status(500).json({
       message: "Error fetching students",
@@ -541,22 +279,20 @@ exports.listStudents = async (req, res) => {
 exports.blockStudent = async (req, res) => {
     try {
         const studentId = req.params.Id;
-
-        const Student = await student.findByIdAndUpdate(
+        const updatedStudent = await Student.findByIdAndUpdate(
             studentId,
             { isBlocked: true },
             { new: true }
         );
 
-        if (!Student) {
+        if (!updatedStudent) {
             return res.status(404).json({ message: "Student not found" });
         }
 
         return res.status(200).json({
             message: "Student blocked successfully",
-            Student
+            student: updatedStudent
         });
-
     } catch (error) {
         return res.status(500).json({
             message: "Error blocking student",
@@ -569,24 +305,22 @@ exports.blockStudent = async (req, res) => {
 exports.unblockStudent = async (req, res) => {
     try {
         const studentId = req.params.Id;
-
-        const student = await Student.findByIdAndUpdate(
+        const updatedStudent = await Student.findByIdAndUpdate(
             studentId,
             { isBlocked: false },
             { new: true }
         );
 
-        if (!student) {
+        if (!updatedStudent) {
             return res.status(404).json({ message: "Student not found" });
         }
 
         return res.status(200).json({
             message: "Student unblocked successfully",
-            student
+            student: updatedStudent
         });
-
     } catch (error) {
-        res.status(500).json({
+        return res.status(500).json({
             message: "Error unblocking student",
             error: error.message
         });
@@ -597,7 +331,6 @@ exports.unblockStudent = async (req, res) => {
 exports.searchteachers = async (req, res) => {
   try {
     const { search, status, department } = req.query;
-
     let filter = {};
 
     if (search && search.trim() !== "") {
@@ -617,12 +350,10 @@ exports.searchteachers = async (req, res) => {
     }
 
     const teachers = await Teacher.find(filter);
-
     res.status(200).json({
       total: teachers.length,
       teachers
     });
-
   } catch (error) {
     res.status(500).json({
       message: "Error searching teachers",
@@ -632,14 +363,11 @@ exports.searchteachers = async (req, res) => {
 };
 
 // SEARCH STUDENTS
-
 exports.searchstudents = async (req, res) => {
   try {
     const { search, status, course } = req.query;
-
     let filter = {};
 
-    // 🔍 Search by name, email, course
     if (search && search.trim() !== "") {
       filter.$or = [
         { name: { $regex: search, $options: "i" } },
@@ -648,29 +376,47 @@ exports.searchstudents = async (req, res) => {
       ];
     }
 
-    // 🎯 Status Filter (Active, Inactive)
     if (status && status !== "All Status") {
       filter.status = status;
     }
 
-    // 🎓 Course Filter
     if (course && course !== "All Courses") {
       filter.course = course;
     }
 
-    // Fetch students from DB
     const students = await Student.find(filter);
-
-    // Response format identical to teacher
     res.status(200).json({
       total: students.length,
       students
     });
-
   } catch (error) {
     res.status(500).json({
       message: "Error searching students",
       error: error.message
     });
+  }
+};
+
+// DELETE TEACHER
+exports.deleteTeacher = async (req, res) => {
+  try {
+    const teacherId = req.params.Id;
+    const deletedTeacher = await Teacher.findByIdAndDelete(teacherId);
+    if (!deletedTeacher) return res.status(404).json({ message: "Teacher not found" });
+    res.status(200).json({ message: "Teacher deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Error deleting teacher", error: error.message });
+  }
+};
+
+// DELETE STUDENT
+exports.deleteStudent = async (req, res) => {
+  try {
+    const studentId = req.params.Id;
+    const deletedStudent = await Student.findByIdAndDelete(studentId);
+    if (!deletedStudent) return res.status(404).json({ message: "Student not found" });
+    res.status(200).json({ message: "Student deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Error deleting student", error: error.message });
   }
 };

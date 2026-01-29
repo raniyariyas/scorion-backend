@@ -142,10 +142,11 @@ exports.studentlogin = async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
+        phone: user.phone,
+        course: user.course,
+        semester: user.semester,
       },
     });
-
-    res.json({ message: "Login successful" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -186,7 +187,7 @@ exports.verifyForgotOtp = async (req, res) => {
 
         if (!user) return res.status(404).json({ message: "User not found" });
 
-        if (user.otp !== otp || user.otpExpires < Date.now()) {
+        if (user.otp !== otp || user.otpExpiry < Date.now()) {
             return res.status(400).json({ message: "Invalid or expired OTP" });
         }
 
@@ -208,7 +209,7 @@ exports.resetPassword = async (req, res) => {
 
         user.password = hashedPassword;
         user.otp = undefined;
-        user.otpExpires = undefined;
+        user.otpExpiry = undefined;
 
         await user.save();
 
@@ -221,7 +222,7 @@ exports.resetPassword = async (req, res) => {
 exports.studentVerifyForgotOtp = async (req, res) => {
     try {
         const { email, otp } = req.body;
-        const student = await Student.findOne({ email });
+        const student = await User.findOne({ email });
         if (!student) return res.status(404).json({ message: "Student not found" });
 
         if (student.otp !== otp || student.otpExpiry < Date.now()) {
@@ -237,7 +238,7 @@ exports.studentVerifyForgotOtp = async (req, res) => {
 exports.studentResetPassword = async (req, res) => {
     try {
         const { email, newPassword } = req.body;
-        const student = await Student.findOne({ email });
+        const student = await User.findOne({ email });
         if (!student) return res.status(404).json({ message: "Student not found" });
 
         const hashedPassword = await bcrypt.hash(newPassword, 10);
