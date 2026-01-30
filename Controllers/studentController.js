@@ -172,7 +172,7 @@ exports.forgotPassword = async (req, res) => {
 
         await emailtransporter(email, otp);
 
-        res.json({ message: "OTP sent to your email" });
+        res.json({ success: true, message: "OTP sent to your email" });
     } catch (err) {
         console.log(err);
         res.status(500).json({ message: "Server errrrrrrrrror" });
@@ -191,7 +191,7 @@ exports.verifyForgotOtp = async (req, res) => {
             return res.status(400).json({ message: "Invalid or expired OTP" });
         }
 
-        res.json({ message: "OTP verified successfully" });
+        res.json({ success: true, message: "OTP verified successfully" });
 
     } catch (err) {
         res.status(500).json({ message: "Server error" });
@@ -213,7 +213,7 @@ exports.resetPassword = async (req, res) => {
 
         await user.save();
 
-        res.json({ message: "Password reset successful" });
+        res.json({ success: true, message: "Password reset successful" });
     } catch (err) {
         console.log(err);
         res.status(500).json({ message: "Server error" });
@@ -252,6 +252,29 @@ exports.studentResetPassword = async (req, res) => {
     } catch (err) {
         res.status(500).json({ message: "Server error" });
     }
+};
+
+// Get personal profile
+exports.getProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select("-password");
+    if (!user) return res.status(404).json({ message: "User not found" });
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Get personal marks
+const Mark = require("../Models/marks");
+exports.getPersonalMarks = async (req, res) => {
+  try {
+    const marks = await Mark.find({ student: req.user.id }).sort({ semester: 1 });
+    res.json({ marks });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
 };
 
 

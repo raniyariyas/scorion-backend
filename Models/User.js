@@ -8,16 +8,16 @@ const userSchema = new mongoose.Schema({
   resetPasswordExpires: Date,
   isVerified: { type: Boolean, default: false },
   phone: String,
-  // course: { type: String, required: true },
   course: { 
-  type: String, 
-  required: true,
-  enum: ["Computer Science", "Electrical Engineering"]
-},
+    type: String, 
+    required: true
+  },
 
   semester: { type: String, required: true },
   status: { type: String, enum: ["Active", "Inactive"], default: "Active" },
   isBlocked: { type: Boolean, default: false },
+  otp: String,
+  otpExpiry: Date,
   createdAt: { type: Date, default: Date.now }
   
 });

@@ -36,6 +36,6 @@ exports. verifyToken = (role) => {
 
 
 // EXPORT MIDDLEWARE BASED ON ROLE
-// exports.authUser = verifyToken("user");
-// exports.authAdmin = verifyToken(" admin");
-// exports.authTeacher = verifyToken("teacher");
+exports.authUser = exports.verifyToken("user");
+exports.authAdmin = exports.verifyToken("admin");
+exports.authTeacher = exports.verifyToken("teacher");

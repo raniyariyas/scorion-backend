@@ -75,7 +75,7 @@ exports.teacherLogin = async (req, res) => {
 
     const isMatch = await bcrypt.compare(password, teacher.password);
     if (!isMatch) 
-    res.status(400).json({ message: "Incorrect password" });
+      return res.status(400).json({ message: "Incorrect password" });
 
     // Generate JWT token
     const token = jwt.sign(
@@ -209,6 +209,22 @@ exports.addMark = async (req, res) => {
 
     await mark.save();
 
+    // Auto-create notification if attendance is below 40%
+    if (attendancePercentage && attendancePercentage < 40) {
+      const Notification = require("../Models/Notification");
+      
+      await Notification.create({
+        student: studentId,
+        type: 'attendance_warning',
+        title: '⚠️ Critical Attendance Alert',
+        message: `Your attendance for Semester ${semester} is critically low at ${attendancePercentage}%. You need at least 75% attendance to be eligible for exams. Please contact your faculty immediately.`,
+        severity: 'critical',
+        relatedSemester: semester
+      });
+      
+      console.log(`Low attendance notification created for student ${studentId}, semester ${semester}`);
+    }
+
     res.status(201).json({ message: "Marks added successfully", mark });
   } catch (error) {
     console.error(error);
@@ -237,8 +253,13 @@ exports.addMark = async (req, res) => {
 //by fasal 
 
 exports.listMarks = async (req, res) => {
-  try {    
-    const marks = await Mark.find({}).populate("student", "name email course");    
+  try {
+    const { studentId } = req.query;
+    
+    // Build query based on studentId if provided
+    const query = studentId ? { student: studentId } : {};
+    
+    const marks = await Mark.find(query).populate("student", "name email course").sort({ semester: 1 });
     res.status(200).json({ marks });
   } catch (error) {
     console.error(error);
@@ -287,12 +308,12 @@ exports.searchstudentsteacher=async(req,res)=>{
 exports.updateMarks = async (req, res) => {
   try {
     const { id } = req.params; // the mark record ID
-    const { subjects, totalGrade, SGPA } = req.body; // data from frontend
+    const { subjects, totalGrade, SGPA, attendancePercentage, academicYear } = req.body; // data from frontend
 
     // Find and update
     const updatedMark = await Mark.findByIdAndUpdate(
       id,
-      { subjects, totalGrade, SGPA },
+      { subjects, totalGrade, sgpa: SGPA, attendancePercentage, academicYear },
       { new: true } // returns the updated document
     );
 
@@ -303,6 +324,27 @@ exports.updateMarks = async (req, res) => {
     res.status(200).json({ message: "Marks updated successfully", updatedMark });
   } catch (error) {
     console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+exports.getTeacherProfile = async (req, res) => {
+  try {
+    const teacher = await Teacher.findById(req.user.id).select("-password");
+    if (!teacher) return res.status(404).json({ message: "Teacher not found" });
+    res.json(teacher);
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+exports.deleteMark = async (req, res) => {
+  try {
+    const markId = req.params.id;
+    const deletedMark = await Mark.findByIdAndDelete(markId);
+    if (!deletedMark) return res.status(404).json({ message: "Record not found" });
+    res.status(200).json({ message: "Mark record purged successfully" });
+  } catch (err) {
     res.status(500).json({ message: "Server error" });
   }
 };
