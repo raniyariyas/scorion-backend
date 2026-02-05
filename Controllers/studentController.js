@@ -1,4 +1,6 @@
 const User=require('../Models/User')
+const Mark = require("../Models/marks");
+const Teacher = require("../Models/Teacher");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const emailtransporter = require("../config/mail");
@@ -40,7 +42,7 @@ exports.studentCreatePassword = async (req, res) => {
 
 exports.studentregistration=async(req,res)=>{
         try {
-            const { name, email, password, phone } = req.body;
+            const { name, email, password, phone, department, course } = req.body;
             console.log(req.body);
             
             // check existing
@@ -64,6 +66,8 @@ exports.studentregistration=async(req,res)=>{
                 email,
                 password: hashedPassword,
                 phone,
+                department,
+                course,
                 otp,
                 otpExpiry
             });
@@ -267,7 +271,6 @@ exports.getProfile = async (req, res) => {
 };
 
 // Get personal marks
-const Mark = require("../Models/marks");
 exports.getPersonalMarks = async (req, res) => {
   try {
     const marks = await Mark.find({ student: req.user.id }).sort({ semester: 1 });
@@ -275,6 +278,19 @@ exports.getPersonalMarks = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Get all faculty list
+exports.getFacultyList = async (req, res) => {
+  try {
+    const teachers = await Teacher.find({ employmentStatus: "Active", isVerified: true })
+      .select("name department subject")
+      .sort({ name: 1 });
+    res.status(200).json(teachers);
+  } catch (err) {
+    console.error("Faculty fetch error:", err);
+    res.status(500).json({ message: "Error fetching faculty list" });
   }
 };
 

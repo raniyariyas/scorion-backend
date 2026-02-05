@@ -21,10 +21,8 @@ const teacherSchema = new mongoose.Schema({
   },
   isBlocked: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
-    password: { type: String },
   resetPasswordToken: String,  
   resetPasswordExpires: Date 
-
 });
 
 

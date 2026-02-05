@@ -7,6 +7,7 @@ const User=require("../Models/User")
 
 const sendEmail = require("../config/mail");
 const Notification = require("../Models/Notification");
+const Syllabus = require("../Models/Syllabus");
 
 /**
  * Helper to create and emit notification for low attendance
@@ -133,7 +134,8 @@ exports.teacherLogin = async (req, res) => {
     // Generate JWT token
     const token = jwt.sign(
       { id: teacher._id,
-        role:"teacher" },
+        role:"teacher",
+        department: teacher.department },
       process.env.JWT_SECRET,
     );
 
@@ -224,6 +226,16 @@ exports.addMark = async (req, res) => {
       return res.status(400).json({ message: "All fields are required" });
     }
 
+    // Verify student department matches teacher department
+    const student = await Student.findById(studentId);
+    if (!student) {
+      return res.status(404).json({ message: "Student not found" });
+    }
+
+    if (student.department !== req.user.department) {
+      return res.status(403).json({ message: "Access denied. You can only manage academic records for your department." });
+    }
+
     // Calculate SGPA and total subjects
     const totalSubjects = subjects.length;
     let totalPoints = 0;
@@ -295,11 +307,24 @@ exports.addMark = async (req, res) => {
 exports.listMarks = async (req, res) => {
   try {
     const { studentId } = req.query;
+    const teacherDept = req.user.department;
+
+    let query = {};
+    if (studentId) {
+      // If studentId is provided, first verify they belong to the teacher's department
+      const student = await Student.findOne({ _id: studentId, department: teacherDept });
+      if (!student) {
+        return res.status(200).json({ marks: [] }); // Or 403, but 200 with empty list is safer for UI
+      }
+      query.student = studentId;
+    } else {
+      // Find all students in this department first
+      const studentsInDept = await Student.find({ department: teacherDept }).select("_id");
+      const studentIds = studentsInDept.map(s => s._id);
+      query.student = { $in: studentIds };
+    }
     
-    // Build query based on studentId if provided
-    const query = studentId ? { student: studentId } : {};
-    
-    const marks = await Mark.find(query).populate("student", "name email course").sort({ semester: 1 });
+    const marks = await Mark.find(query).populate("student", "name email course department").sort({ semester: 1 });
     res.status(200).json({ marks });
   } catch (error) {
     console.error(error);
@@ -312,8 +337,9 @@ exports.searchstudentsteacher=async(req,res)=>{
  try {
     const { search, semester, status ,course } = req.query;
 
-    // Build a dynamic query object
-    const query = {};
+    const query = {
+      department: req.user.department
+    };
 
     if (search) {
       // Case-insensitive search on name
@@ -350,11 +376,21 @@ exports.updateMarks = async (req, res) => {
     const { id } = req.params; // the mark record ID
     const { subjects, totalGrade, SGPA, attendancePercentage, academicYear } = req.body; // data from frontend
 
-    // Find and update
+    // Verify ownership/department
+    const existingMark = await Mark.findById(id).populate('student');
+    if (!existingMark) {
+      return res.status(404).json({ message: "Mark record not found" });
+    }
+
+    if (existingMark.student.department !== req.user.department) {
+      return res.status(403).json({ message: "Access denied. Student belongs to another department." });
+    }
+
+    // Proceed with update
     const updatedMark = await Mark.findByIdAndUpdate(
       id,
       { subjects, totalGrade, sgpa: SGPA, attendancePercentage, academicYear },
-      { new: true } // returns the updated document
+      { new: true }
     );
 
     if (!updatedMark) {
@@ -384,10 +420,126 @@ exports.getTeacherProfile = async (req, res) => {
 exports.deleteMark = async (req, res) => {
   try {
     const markId = req.params.id;
-    const deletedMark = await Mark.findByIdAndDelete(markId);
-    if (!deletedMark) return res.status(404).json({ message: "Record not found" });
+    const teacherDept = req.user.department;
+
+    const existingMark = await Mark.findById(markId).populate('student');
+    if (!existingMark) return res.status(404).json({ message: "Record not found" });
+
+    if (existingMark.student.department !== teacherDept) {
+      return res.status(403).json({ message: "Access denied. Student belongs to another department." });
+    }
+
+    await Mark.findByIdAndDelete(markId);
     res.status(200).json({ message: "Mark record purged successfully" });
   } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+exports.getStudentSyllabus = async (req, res) => {
+  try {
+    const { studentId, semester } = req.params;
+    const student = await User.findById(studentId);
+    
+    if (!student) {
+      return res.status(404).json({ message: "Student not found" });
+    }
+
+    if (student.department !== req.user.department) {
+      return res.status(403).json({ message: "Access denied. Student belongs to another department." });
+    }
+
+    const syllabus = await Syllabus.findOne({ 
+      semester, 
+      course: student.course,
+      department: student.department 
+    });
+    
+    if (!syllabus) {
+      // Fallback to a general syllabus for that semester if specific one isn't found
+      const fallbackSyllabus = await Syllabus.findOne({ semester });
+      if (!fallbackSyllabus) {
+        return res.status(404).json({ message: "Curriculum not found for this phase" });
+      }
+      return res.status(200).json(fallbackSyllabus);
+    }
+    
+    res.status(200).json(syllabus);
+  } catch (error) {
+    console.error("Syllabus fetch error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+exports.saveImprovementNotes = async (req, res) => {
+  try {
+    const { studentId, semester, improvementNotes } = req.body;
+    const mongoose = require("mongoose");
+    
+    // Verify student department before updating
+    const student = await Student.findById(studentId);
+    if (!student) return res.status(404).json({ message: "Student not found" });
+    if (student.department !== req.user.department) {
+      return res.status(403).json({ message: "Access denied. Student belongs to another department branch." });
+    }
+
+    const studentObjectId = mongoose.Types.ObjectId.isValid(studentId) 
+      ? new mongoose.Types.ObjectId(studentId) 
+      : studentId;
+
+    const mark = await Mark.findOneAndUpdate(
+      { student: studentObjectId, semester: String(semester) },
+      { 
+        $set: { 
+          improvementNotes: {
+            ...improvementNotes,
+            facultyName: req.user.name || req.user.email || 'Faculty'
+          }
+        } 
+      },
+      { new: true }
+    );
+    
+    if (!mark) {
+      return res.status(404).json({ message: "Mark entry not found for this student/semester combination" });
+    }
+    
+    res.status(200).json({ message: "Improvement notes saved successfully", mark });
+  } catch (error) {
+    console.error("Error saving improvement notes:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+exports.getImprovementNotes = async (req, res) => {
+  try {
+    const { studentId, semester } = req.query;
+    const mongoose = require("mongoose");
+    
+    if (!studentId || !semester) {
+      return res.status(400).json({ message: "Student ID and semester are required" });
+    }
+
+    const student = await Student.findById(studentId);
+    if (!student) return res.status(404).json({ message: "Student not found" });
+
+    if (student.department !== req.user.department) {
+      return res.status(403).json({ message: "Access denied. Student belongs to another department branch." });
+    }
+
+    const studentObjectId = mongoose.Types.ObjectId.isValid(studentId) 
+      ? new mongoose.Types.ObjectId(studentId) 
+      : studentId;
+
+    const mark = await Mark.findOne({ student: studentObjectId, semester: String(semester) });
+    
+    if (!mark) {
+      return res.status(404).json({ message: "No records found" });
+    }
+
+    res.status(200).json({ improvementNotes: mark.improvementNotes });
+  } catch (error) {
+    console.error("Error fetching improvement notes:", error);
     res.status(500).json({ message: "Server error" });
   }
 };

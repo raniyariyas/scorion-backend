@@ -10,7 +10,8 @@ const {
    resetPassword,
    studentCreatePassword,
    getProfile,
-   getPersonalMarks
+   getPersonalMarks,
+   getFacultyList
    } = require("../Controllers/studentController");
 const communityController = require("../Controllers/communityController");
 const syllabusController = require("../Controllers/syllabusController");
@@ -100,5 +101,8 @@ router.put("/community/posts/:id/like", authUser, communityController.likePost);
 // Syllabus routes
 router.get("/syllabus/:semester", authUser, syllabusController.getSyllabusBySemester);
 router.get("/syllabus", authUser, syllabusController.getAllSyllabus);
+
+// Faculty routes
+router.get("/faculty", authUser, getFacultyList);
 
 module.exports = router;

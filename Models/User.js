@@ -12,6 +12,10 @@ const userSchema = new mongoose.Schema({
     type: String, 
     required: false
   },
+  department: {
+    type: String,
+    required: false
+  },
 
   semester: { type: String, required: false },
   status: { type: String, enum: ["Active", "Inactive"], default: "Active" },

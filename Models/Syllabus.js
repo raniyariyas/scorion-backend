@@ -3,8 +3,15 @@ const mongoose = require("mongoose");
 const syllabusSchema = new mongoose.Schema({
   semester: {
     type: String,
-    required: true,
-    unique: true
+    required: true
+  },
+  department: {
+    type: String,
+    required: true
+  },
+  course: {
+    type: String,
+    required: true
   },
   title: String,
   description: String,
