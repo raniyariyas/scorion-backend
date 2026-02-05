@@ -12,6 +12,8 @@ const {
    getProfile,
    getPersonalMarks
    } = require("../Controllers/studentController");
+const communityController = require("../Controllers/communityController");
+const syllabusController = require("../Controllers/syllabusController");
 const { authUser } = require("../Middleware/authMiddleware");
 
    
@@ -89,5 +91,14 @@ router.put("/notifications/mark-all-read", authUser, async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+
+// Community routes
+router.post("/community/posts", authUser, communityController.createPost);
+router.get("/community/posts", authUser, communityController.getPosts);
+router.put("/community/posts/:id/like", authUser, communityController.likePost);
+
+// Syllabus routes
+router.get("/syllabus/:semester", authUser, syllabusController.getSyllabusBySemester);
+router.get("/syllabus", authUser, syllabusController.getAllSyllabus);
 
 module.exports = router;

@@ -10,10 +10,10 @@ const userSchema = new mongoose.Schema({
   phone: String,
   course: { 
     type: String, 
-    required: true
+    required: false
   },
 
-  semester: { type: String, required: true },
+  semester: { type: String, required: false },
   status: { type: String, enum: ["Active", "Inactive"], default: "Active" },
   isBlocked: { type: Boolean, default: false },
   otp: String,

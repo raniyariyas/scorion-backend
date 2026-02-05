@@ -40,45 +40,46 @@ exports.studentCreatePassword = async (req, res) => {
 
 exports.studentregistration=async(req,res)=>{
         try {
-            const { name, email, password } = req.body;
+            const { name, email, password, phone } = req.body;
             console.log(req.body);
             
             // check existing
             const existing = await User.findOne({ email });
             
             if (existing) {
-              return res.status(400).json({ message: "User already exists" });
+                return res.status(400).json({ message: "User already exists" });
             }
         
             // hash password
             const hashedPassword = await bcrypt.hash(password, 10);
             console.log(hashedPassword,"kkjj");
 
-// otp generation
+            // otp generation
             const otp = Math.floor(100000 + Math.random() * 900000).toString();
             const otpExpiry = Date.now() + 10 * 60 * 1000; 
             
-        
             // create user db saving
             const newUser = new User({
-              name,
-              email,
-              password:hashedPassword,
-              otp,
-            otpExpiry
+                name,
+                email,
+                password: hashedPassword,
+                phone,
+                otp,
+                otpExpiry
             });
 
-            emailtransporter(email,otp);
+            // await emailtransporter(email, otp); // Optionally await email
+            emailtransporter(email, otp);
         
             await newUser.save();
-            console.log(newUser,"llllllllll");
+            console.log(newUser, "User saved successfully");
             
+            res.status(201).json({ success: true, message: "User registered successfully check email" });
         
-            res.status(201).json({ message: "User registered successfully check email" });
-        
-          } catch (err) {
-            res.status(500).json({ message: "Server error" });
-          }
+        } catch (err) {
+            console.error("Registration error:", err);
+            res.status(500).json({ message: "Server error", error: err.message });
+        }
 }
 
 
@@ -103,9 +104,9 @@ exports.verifyOtp = async (req, res) => {
     user.otpExpiry = null;
     await user.save();
 
-      res.json({ message: "OTP verified successfully!" });
+      res.json({ success: true, message: "OTP verified successfully!" });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ success: false, error: err.message });
   }
 };
 

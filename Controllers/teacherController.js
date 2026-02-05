@@ -6,6 +6,59 @@ const Student = require("../Models/User");
 const User=require("../Models/User")
 
 const sendEmail = require("../config/mail");
+const Notification = require("../Models/Notification");
+
+/**
+ * Helper to create and emit notification for low attendance
+ */
+const checkAndNotifyLowAttendance = async (studentId, semester, attendancePercentage) => {
+  if (attendancePercentage && attendancePercentage < 40) {
+    try {
+      // 1. Create notification in database
+      const notification = await Notification.create({
+        student: studentId,
+        type: 'attendance_warning',
+        title: '⚠️ Critical Attendance Alert',
+        message: `Your attendance for Semester ${semester} is critically low at ${attendancePercentage}%. You need at least 75% attendance to be eligible for exams. Please contact your faculty immediately.`,
+        severity: 'critical',
+        relatedSemester: semester
+      });
+      
+      console.log(`✅ Database notification created for student ${studentId}`);
+      
+      // 2. Real-time push via Socket.IO
+      try {
+        const { io, connectedUsers } = require("../server");
+        if (io && connectedUsers) {
+          const studentIdStr = studentId.toString();
+          
+          // Debugging: Log all connected IDs to help find mismatches
+          const connectedUserIdsArray = Array.from(connectedUsers.keys());
+          console.log('🔍 Socket Map check - Target:', studentIdStr);
+          console.log('🔍 Connected User IDs:', connectedUserIdsArray);
+          
+          const studentSocketId = connectedUsers.get(studentIdStr);
+          
+          if (studentSocketId) {
+            io.to(studentSocketId).emit('new-notification', {
+              notification: notification,
+              message: 'You have a new notification!'
+            });
+            console.log(`✅ Real-time notification SENT to socket ${studentSocketId}`);
+          } else {
+            console.log(`⚠️ Student ${studentIdStr} not currently connected (socket not found in map)`);
+          }
+        } else {
+          console.log('❌ Socket.io or connectedUsers map not available from server.js');
+        }
+      } catch (socketError) {
+        console.error('❌ Socket emit error:', socketError.message);
+      }
+    } catch (dbError) {
+      console.error('❌ Notification creation error:', dbError.message);
+    }
+  }
+};
 
 // -------------------------
 // TEACHER REGISTRATION
@@ -114,7 +167,7 @@ exports.teacherForgotPassword = async (req, res) => {
         teacher.otpExpiry = Date.now() + 5 * 60 * 1000; // 5 minutes
         await teacher.save();
 
-        await sendEmail(email, "Password Reset OTP", `Your OTP: ${otp}`);
+        await sendEmail(email, otp, teacher.name, "Reset Your Scorion Password");
 
         res.json({ message: "OTP sent to your email" });
     } catch (err) {
@@ -209,21 +262,8 @@ exports.addMark = async (req, res) => {
 
     await mark.save();
 
-    // Auto-create notification if attendance is below 40%
-    if (attendancePercentage && attendancePercentage < 40) {
-      const Notification = require("../Models/Notification");
-      
-      await Notification.create({
-        student: studentId,
-        type: 'attendance_warning',
-        title: '⚠️ Critical Attendance Alert',
-        message: `Your attendance for Semester ${semester} is critically low at ${attendancePercentage}%. You need at least 75% attendance to be eligible for exams. Please contact your faculty immediately.`,
-        severity: 'critical',
-        relatedSemester: semester
-      });
-      
-      console.log(`Low attendance notification created for student ${studentId}, semester ${semester}`);
-    }
+    // Notify if attendance is low
+    await checkAndNotifyLowAttendance(studentId, semester, attendancePercentage);
 
     res.status(201).json({ message: "Marks added successfully", mark });
   } catch (error) {
@@ -320,6 +360,9 @@ exports.updateMarks = async (req, res) => {
     if (!updatedMark) {
       return res.status(404).json({ message: "Mark record not found" });
     }
+
+    // Check and notify for low attendance on update too
+    await checkAndNotifyLowAttendance(updatedMark.student, updatedMark.semester, attendancePercentage);
 
     res.status(200).json({ message: "Marks updated successfully", updatedMark });
   } catch (error) {
