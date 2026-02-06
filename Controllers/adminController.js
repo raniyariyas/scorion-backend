@@ -1,10 +1,12 @@
 const Teacher = require('../Models/Teacher');
 const Student = require('../Models/User');
+const Mark = require('../Models/marks');
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
 const dotenv = require("dotenv");
+const Notification = require('../Models/Notification');
 dotenv.config();
 
 // ADMIN LOGIN (Hardcoded from .env)
@@ -418,5 +420,143 @@ exports.deleteStudent = async (req, res) => {
     res.status(200).json({ message: "Student deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: "Error deleting student", error: error.message });
+  }
+};
+
+// GET DASHBOARD STATS
+exports.getDashboardStats = async (req, res) => {
+  try {
+    const [totalStudents, totalTeachers, allMarks] = await Promise.all([
+      Student.countDocuments(),
+      Teacher.countDocuments(),
+      Mark.find().populate('student')
+    ]);
+
+    // Calculate Average GPA
+    const validMarks = allMarks.filter(m => m.sgpa > 0);
+    const avgGPA = validMarks.length > 0 
+      ? (validMarks.reduce((acc, curr) => acc + curr.sgpa, 0) / validMarks.length).toFixed(2)
+      : "0.00";
+
+    // Get Active Courses
+    const courses = await Student.distinct("course");
+
+    // Get Recent Activity (e.g., last 5 students added)
+    const recentStudents = await Student.find().sort({ createdAt: -1 }).limit(3);
+    const recentTeachers = await Teacher.find().sort({ createdAt: -1 }).limit(2);
+
+    const systemEvents = [
+      ...recentStudents.map(s => ({ action: `Student Enrolled: ${s.name}`, time: 'Recently', type: 'user' })),
+      ...recentTeachers.map(t => ({ action: `Teacher Onboarded: ${t.name}`, time: 'Recently', type: 'security' }))
+    ];
+
+    // Get Course Metrics
+    const courseStats = {};
+    allMarks.forEach(m => {
+      const cName = m.student?.course || 'General';
+      if (!courseStats[cName]) {
+        courseStats[cName] = { totalSGPA: 0, count: 0 };
+      }
+      courseStats[cName].totalSGPA += m.sgpa;
+      courseStats[cName].count += 1;
+    });
+
+    const courseMetrics = Object.keys(courseStats).map((name, idx) => {
+      const avg = (courseStats[name].totalSGPA / courseStats[name].count).toFixed(1);
+      const colors = ['bg-indigo-500', 'bg-cyan-500', 'bg-emerald-500', 'bg-amber-500'];
+      const score = Math.min(Math.round(parseFloat(avg) * 10), 100);
+      return {
+        name,
+        current: score,
+        progress: score,
+        color: colors[idx % colors.length],
+        predicted: Math.min(score + 5, 100)
+      };
+    }).slice(0, 4);
+
+    // Get Upcoming Alerts (Pending Accounts or System Tasks)
+    const pendingTeachers = await Teacher.find({ isVerified: false }).limit(3);
+    const upcomingAlerts = [
+      ...pendingTeachers.map(t => ({
+        subject: 'Onboarding',
+        title: `Pending: ${t.name}`,
+        date: 'Action Required',
+        weight: 'Account',
+        priority: 'High'
+      })),
+      {
+        subject: 'System',
+        title: 'Institutional Audit',
+        date: 'Continuous',
+        weight: 'Automated',
+        priority: 'Medium'
+      }
+    ];
+
+    res.status(200).json({
+      stats: [
+        { label: 'Institutional Avg', value: avgGPA, change: 'LIVE', trend: 'up' },
+        { label: 'Total Students', value: totalStudents.toString(), change: 'Students', trend: 'neutral' },
+        { label: 'Active Teachers', value: totalTeachers.toString(), change: 'Faculties', trend: 'neutral' },
+        { label: 'Active Courses', value: courses.length.toString(), change: 'Domains', trend: 'neutral' }
+      ],
+      systemEvents,
+      courseMetrics,
+      upcomingAlerts,
+      allMarks
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching stats", error: error.message });
+  }
+};
+
+/**
+ * Broadcast a notification to every user in the system
+ */
+exports.broadcastGlobalAlert = async (req, res) => {
+  try {
+    const { title, message, severity } = req.body;
+
+    if (!title || !message) {
+      return res.status(400).json({ message: "Title and message are required" });
+    }
+
+    // Find all active students/users and teachers
+    const [students, teachers] = await Promise.all([
+      Student.find({ isBlocked: false }),
+      Teacher.find({ isBlocked: false, isVerified: true })
+    ]);
+    
+    if (students.length === 0 && teachers.length === 0) {
+      return res.status(404).json({ message: "No active users or faculty found to receive broadcast" });
+    }
+
+    // Create notifications for all students
+    const studentNotifications = students.map(user => ({
+      student: user._id,
+      type: 'general',
+      title: title,
+      message: message,
+      severity: severity || 'info'
+    }));
+
+    // Create notifications for all teachers
+    const teacherNotifications = teachers.map(teacher => ({
+      teacher: teacher._id,
+      type: 'general',
+      title: title,
+      message: message,
+      severity: severity || 'info'
+    }));
+
+    await Notification.insertMany([...studentNotifications, ...teacherNotifications]);
+
+    res.status(200).json({ 
+      message: `Global broadcast sent successfully to ${students.length} students and ${teachers.length} faculty members`,
+      count: students.length + teachers.length
+    });
+  } catch (error) {
+    console.error("Error sending global broadcast:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };

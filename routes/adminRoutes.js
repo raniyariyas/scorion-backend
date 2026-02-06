@@ -17,10 +17,16 @@ const {
   searchteachers,
   deleteTeacher,
   deleteStudent,
+  getDashboardStats,
+  broadcastGlobalAlert
 } = require("../Controllers/adminController");
 
 // Login (Public)
 router.post("/login", adminLogin);
+
+// Dashboard stats
+router.get("/stats", verifyToken("admin"), getDashboardStats);
+router.post("/broadcast-global", verifyToken("admin"), broadcastGlobalAlert);
 
 //teacher routes (Protected)
 router.post("/add-teacher", verifyToken("admin"), addTeacher);

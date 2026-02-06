@@ -4,7 +4,12 @@ const notificationSchema = new mongoose.Schema({
   student: { 
     type: mongoose.Schema.Types.ObjectId, 
     ref: "User", 
-    required: true 
+    required: false 
+  },
+  teacher: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: "Teacher", 
+    required: false 
   },
   type: { 
     type: String, 

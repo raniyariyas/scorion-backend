@@ -543,3 +543,43 @@ exports.getImprovementNotes = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+/**
+ * Send an alert to all students in the teacher's department
+ */
+exports.sendDeptAlert = async (req, res) => {
+  try {
+    const { message, title, severity } = req.body;
+    const department = req.user.department;
+
+    if (!message || !title) {
+      return res.status(400).json({ message: "Title and message are required" });
+    }
+
+    // Find all students in this department
+    const students = await Student.find({ department });
+    
+    if (students.length === 0) {
+      return res.status(404).json({ message: "No students found in your department" });
+    }
+
+    // Create notifications for all students
+    const notifications = students.map(student => ({
+      student: student._id,
+      type: 'general',
+      title: title,
+      message: message,
+      severity: severity || 'info'
+    }));
+
+    await Notification.insertMany(notifications);
+
+    res.status(200).json({ 
+      message: `Alert sent successfully to ${students.length} students in ${department}`,
+      count: students.length
+    });
+  } catch (error) {
+    console.error("Error sending dept alert:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
