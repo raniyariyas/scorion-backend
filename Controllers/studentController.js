@@ -301,6 +301,21 @@ exports.getFacultyList = async (req, res) => {
     res.status(500).json({ message: "Error fetching faculty list" });
   }
 };
-
-
-
+// Get system-wide stats for About Page
+exports.getSystemStats = async (req, res) => {
+  try {
+    const [studentCount, predictionCount] = await Promise.all([
+      User.countDocuments({ isVerified: true }),
+      Mark.countDocuments()
+    ]);
+    
+    res.status(200).json({
+      students: studentCount,
+      predictions: predictionCount,
+      accuracy: 96 // Represents the engine precision
+    });
+  } catch (err) {
+    console.error("Stats fetch error:", err);
+    res.status(500).json({ message: "Error fetching system stats" });
+  }
+};

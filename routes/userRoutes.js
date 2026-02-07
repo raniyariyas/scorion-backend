@@ -11,7 +11,8 @@ const {
    studentCreatePassword,
    getProfile,
    getPersonalMarks,
-   getFacultyList
+   getFacultyList,
+   getSystemStats
    } = require("../Controllers/studentController");
 const communityController = require("../Controllers/communityController");
 const syllabusController = require("../Controllers/syllabusController");
@@ -24,6 +25,7 @@ router.post('/forgot-password',forgotPassword);
 router.post("/forgot-password/verify-otp", verifyForgotOtp);
 router.post("/reset-password", resetPassword);
 router.post("/createpassword/:token", studentCreatePassword);
+router.get("/system-stats", getSystemStats);
 
 // Information routes
 router.get("/profile", authUser, getProfile);
@@ -95,6 +97,7 @@ router.put("/notifications/mark-all-read", authUser, async (req, res) => {
 router.post("/community/posts", authUser, communityController.createPost);
 router.get("/community/posts", authUser, communityController.getPosts);
 router.put("/community/posts/:id/like", authUser, communityController.likePost);
+router.post("/community/posts/:id/reply", authUser, communityController.replyToPost);
 
 // Syllabus routes
 router.get("/syllabus/:semester", authUser, syllabusController.getSyllabusBySemester);

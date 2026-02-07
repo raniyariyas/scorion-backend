@@ -72,7 +72,7 @@ exports.getPosts = async (req, res) => {
       text: post.text,
       tags: post.tags,
       likes: post.likes.length,
-      replies: post.replies.length,
+      replies: post.replies || [],
       time: formatTimeAgo(post.createdAt),
       isSuccessStory: post.isSuccessStory
     }));
@@ -103,6 +103,36 @@ exports.likePost = async (req, res) => {
     res.status(200).json({ likes: post.likes.length });
   } catch (error) {
     res.status(500).json({ message: "Like action failed" });
+  }
+};
+
+exports.replyToPost = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { text } = req.body;
+    const userId = req.user.id;
+
+    if (!text || text.trim().length === 0) {
+      return res.status(400).json({ message: "Reply text is required" });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const post = await CommunityPost.findById(id);
+    if (!post) return res.status(404).json({ message: "Post not found" });
+
+    post.replies.push({
+      author: userId,
+      authorName: user.name,
+      text: text
+    });
+
+    await post.save();
+    res.status(200).json({ message: "Reply added", replies: post.replies });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Reply failed" });
   }
 };
 
