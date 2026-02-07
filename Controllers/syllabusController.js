@@ -1,5 +1,6 @@
 const Syllabus = require("../Models/Syllabus");
 const User = require("../Models/User");
+const Mark = require("../Models/marks");
 
 exports.getSyllabusBySemester = async (req, res) => {
   try {
@@ -10,24 +11,66 @@ exports.getSyllabusBySemester = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Attempt to find syllabus specific to user's course and department
+    // 1. Get the standard syllabus
     const syllabus = await Syllabus.findOne({ 
       semester, 
       course: user.course,
       department: user.department 
     });
     
-    if (!syllabus) {
-      // Fallback: If no specific syllabus found, try to find a general one for that semester 
-      // (or we can return 404, but let's be more resilient)
-      const fallbackSyllabus = await Syllabus.findOne({ semester });
-      if (!fallbackSyllabus) {
-        return res.status(404).json({ message: "Syllabus not found for this phase" });
+    // 2. Get the student's actual marks for this semester to find extra subjects
+    const marks = await Mark.findOne({ 
+      student: req.user.id,
+      semester 
+    });
+
+    let combinedSubjects = [];
+    let title = `${user.course} - Semester ${semester}`;
+    let description = `Academic curriculum for ${user.course}, Semester ${semester}`;
+
+    if (syllabus) {
+      combinedSubjects = [...syllabus.subjects];
+      title = syllabus.title;
+      description = syllabus.description;
+    } else {
+      // Fallback: try general syllabus if course-specific not found
+      const fallback = await Syllabus.findOne({ semester });
+      if (fallback) {
+        combinedSubjects = [...fallback.subjects];
+        title = fallback.title;
+        description = fallback.description;
       }
-      return res.status(200).json(fallbackSyllabus);
+    }
+
+    // 3. Merge extra subjects from Marks if they don't exist in Syllabus
+    if (marks && marks.subjects) {
+      marks.subjects.forEach(markSub => {
+        const alreadyExists = combinedSubjects.some(s => s.name.toLowerCase() === markSub.name.toLowerCase());
+        if (!alreadyExists) {
+          combinedSubjects.push({
+            name: markSub.name,
+            code: "ADDITIONAL",
+            credits: 3,
+            difficulty: "Medium",
+            color: "text-indigo-500",
+            bg: "bg-indigo-50"
+          });
+        }
+      });
+    }
+
+    if (combinedSubjects.length === 0 && !syllabus) {
+      return res.status(404).json({ message: "Syllabus not found for this phase" });
     }
     
-    res.status(200).json(syllabus);
+    res.status(200).json({
+      semester,
+      course: user.course,
+      department: user.department,
+      title,
+      description,
+      subjects: combinedSubjects
+    });
   } catch (error) {
     console.error("Syllabus error:", error);
     res.status(500).json({ message: "Error syncing syllabus registry" });

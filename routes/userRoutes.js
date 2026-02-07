@@ -18,9 +18,7 @@ const syllabusController = require("../Controllers/syllabusController");
 const { authUser } = require("../Middleware/authMiddleware");
 
    
-// login ,otpverify,register
-router.post('/register',studentregistration);
-router.post("/verify-otp",verifyOtp);
+// login ,otpverify
 router.post("/login", studentlogin);
 router.post('/forgot-password',forgotPassword);
 router.post("/forgot-password/verify-otp", verifyForgotOtp);

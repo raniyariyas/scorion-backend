@@ -132,6 +132,14 @@ exports.studentlogin = async (req, res) => {
     if (!isMatch)
       return res.status(400).json({ message: "Incorrect password" });
 
+    // Check if blocked
+    if (user.isBlocked) {
+      return res.status(403).json({ 
+        message: "Account blocked", 
+        reason: "Your account has been blocked by the admin." 
+      });
+    }
+
     // jwt
     console.log("hiiiii");
     

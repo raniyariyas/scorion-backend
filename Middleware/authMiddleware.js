@@ -1,13 +1,16 @@
 const jwt = require("jsonwebtoken");
 const dotenv = require("dotenv");
+const Teacher = require("../Models/Teacher");
+const User = require("../Models/User");
 dotenv.config();
 
 
-// tokem verification middleware
+// token verification middleware
 // MAIN FUNCTION (FACTORY)
-exports. verifyToken = (role) => {
-  return (req, res, next) => {
-    const token = req.headers.authorization?.split(" ")[1];
+exports.verifyToken = (role) => {
+  return async (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.split(" ")[1];
     
 
     if (!token) {
@@ -21,9 +24,26 @@ exports. verifyToken = (role) => {
         return res.status(403).json({ message: "Access denied" });
       }
 
+      // Check for blocked status in database
+      if (role === "teacher") {
+        const teacher = await Teacher.findById(decoded.id);
+        if (!teacher || teacher.isBlocked) {
+          return res.status(403).json({ 
+            message: "Account blocked", 
+            reason: "Your account has been blocked by the admin." 
+          });
+        }
+      } else if (role === "user") {
+        const student = await User.findById(decoded.id);
+        if (!student || student.isBlocked) {
+          return res.status(403).json({ 
+            message: "Account blocked", 
+            reason: "Your account has been blocked by the admin." 
+          });
+        }
+      }
 
       req.user = decoded; // save logged-in user
-      console.log(req.user,"kjhjjhjhh");
       
       next();
 

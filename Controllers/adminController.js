@@ -4,9 +4,9 @@ const Mark = require('../Models/marks');
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
-const nodemailer = require("nodemailer");
 const dotenv = require("dotenv");
 const Notification = require('../Models/Notification');
+const { sendAccountCreationEmail } = require("../config/mail");
 dotenv.config();
 
 // ADMIN LOGIN (Hardcoded from .env)
@@ -60,7 +60,8 @@ exports.addTeacher = async (req, res) => {
       highestQualification,
       teachingExperience,
       joinDate,
-      employmentStatus
+      employmentStatus,
+      isBlocked
     } = req.body;
 
     const token = crypto.randomBytes(20).toString('hex');
@@ -76,25 +77,13 @@ exports.addTeacher = async (req, res) => {
       teachingExperience,
       joinDate,
       employmentStatus,
+      isBlocked: isBlocked || false,
       resetPasswordToken: token,
       resetPasswordExpires: Date.now() + 3600000 // 1 hour
     });
     await newTeacher.save();
 
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      }
-    });
-
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: "Welcome to SCORION - Set Your Faculty Password",
-      text: `Hello ${name},\n\nYou have been added as a Faculty Member on SCORION.\n\nPlease click the link below to set your secure password:\n\nhttp://localhost:5173/createpass/${token}\n\nThis link will expire in 1 hour.`
-    });
+    await sendAccountCreationEmail(email, name, "teacher", token);
 
     return res.status(201).json({
       message: "Teacher added successfully",
@@ -102,6 +91,13 @@ exports.addTeacher = async (req, res) => {
     });
 
   } catch (error) {
+    console.error("Error adding teacher:", error);
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+      return res.status(400).json({ 
+        message: `${field.charAt(0).toUpperCase() + field.slice(1)} already exists. Each teacher must have a unique ${field}.` 
+      });
+    }
     return res.status(500).json({
       message: "Error adding teacher",
       error: error.message
@@ -113,18 +109,59 @@ exports.addTeacher = async (req, res) => {
 exports.editTeacher = async (req, res) => {
   try {
     const teacherId = req.params.Id;
-    const updateData = req.body;
+    const {
+      name,
+      email,
+      phone,
+      salary,
+      department,
+      subject,
+      highestQualification,
+      teachingExperience,
+      joinDate,
+      isBlocked
+    } = req.body;
 
-    const updateddata = await Teacher.findByIdAndUpdate(teacherId, updateData, { new: true });
+    console.log(`[Admin] EDIT TEACHER - ID: ${teacherId}, Target Block Status: ${isBlocked}`);
+
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (email !== undefined) updateData.email = email;
+    if (phone !== undefined) updateData.phone = phone;
+    if (salary !== undefined) updateData.salary = salary;
+    if (department !== undefined) updateData.department = department;
+    if (subject !== undefined) updateData.subject = subject;
+    if (highestQualification !== undefined) updateData.highestQualification = highestQualification;
+    if (teachingExperience !== undefined) updateData.teachingExperience = teachingExperience;
+    if (joinDate !== undefined) updateData.joinDate = joinDate;
+    if (isBlocked !== undefined) updateData.isBlocked = isBlocked;
+
+    const updatedTeacher = await Teacher.findByIdAndUpdate(
+      teacherId,
+      { $set: updateData },
+      { new: true }
+    );
     
-    if (!updateddata) return res.status(404).json({ message: "Teacher not found" });
+    if (!updatedTeacher) {
+      console.log(`[Admin] Teacher not found for update: ${teacherId}`);
+      return res.status(404).json({ message: "Teacher not found" });
+    }
+
+    console.log(`[Admin] Teacher ${updatedTeacher.email} update successful. isBlocked: ${updatedTeacher.isBlocked}`);
 
     return res.status(200).json({
       message: "Teacher updated successfully",
-      teacher: updateddata
+      teacher: updatedTeacher
     });
 
   } catch (error) {
+    console.error(`[Admin] Error updating teacher ${req.params.Id}:`, error);
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+      return res.status(400).json({ 
+        message: `${field.charAt(0).toUpperCase() + field.slice(1)} already exists on another account.` 
+      });
+    }
     return res.status(500).json({ message: "Error updating teacher", error: error.message });
   }
 };
@@ -200,7 +237,7 @@ exports.unblockTeacher = async (req, res) => {
 // add student
 exports.addStudent = async (req, res) => {
   try {
-    const { name, email, phone, course, semester, status } = req.body;
+    const { name, email, phone, course, department, semester, status, isBlocked } = req.body;
     const token = crypto.randomBytes(20).toString("hex");
 
     const newStudent = new Student({
@@ -208,28 +245,17 @@ exports.addStudent = async (req, res) => {
       email,
       phone,
       course,
+      department,
       semester,
       status,
+      isBlocked: isBlocked || false,
       resetPasswordToken: token,
       resetPasswordExpires: Date.now() + 3600000 // 1 hour
     });
 
     await newStudent.save();
 
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      }
-    });
-
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: "Set Your Student Account Password - SCORION",
-      text: `Hello ${name},\n\nWelcome to SCORION! Your student account has been created.\n\nPlease click the link below to set your password and activate your account:\n\nhttp://localhost:5173/createpass/${token}\n\nThis link will expire in 1 hour.`
-    });
+    await sendAccountCreationEmail(email, name, "student", token);
 
     return res.status(201).json({
       message: "Student added successfully & email sent",
@@ -237,6 +263,13 @@ exports.addStudent = async (req, res) => {
     });
 
   } catch (error) {
+    console.error("Error adding student:", error);
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+      return res.status(400).json({ 
+        message: `${field.charAt(0).toUpperCase() + field.slice(1)} already registered. Each student must have a unique ${field}.` 
+      });
+    }
     return res.status(500).json({ message: "Error adding student", error: error.message });
   }
 };
@@ -245,11 +278,32 @@ exports.addStudent = async (req, res) => {
 exports.editStudent = async (req, res) => {
   try {
     const studentId = req.params.Id;
-    const updateData = req.body;
+    const { name, email, phone, course, department, semester, isBlocked, enrollmentDate } = req.body;
 
-    const updatedStudent = await Student.findByIdAndUpdate(studentId, updateData, { new: true });
+    console.log(`[Admin] EDIT STUDENT - ID: ${studentId}, Target Block Status: ${isBlocked}`);
+
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (email !== undefined) updateData.email = email;
+    if (phone !== undefined) updateData.phone = phone;
+    if (course !== undefined) updateData.course = course;
+    if (department !== undefined) updateData.department = department;
+    if (semester !== undefined) updateData.semester = semester;
+    if (enrollmentDate !== undefined) updateData.enrollmentDate = enrollmentDate;
+    if (isBlocked !== undefined) updateData.isBlocked = isBlocked;
+
+    const updatedStudent = await Student.findByIdAndUpdate(
+      studentId,
+      { $set: updateData },
+      { new: true }
+    );
     
-    if (!updatedStudent) return res.status(404).json({ message: "Student not found" });
+    if (!updatedStudent) {
+      console.log(`[Admin] Student not found for update: ${studentId}`);
+      return res.status(404).json({ message: "Student not found" });
+    }
+
+    console.log(`[Admin] Student ${updatedStudent.email} update successful. isBlocked: ${updatedStudent.isBlocked}`);
 
     return res.status(200).json({
       message: "Student updated successfully",
@@ -257,6 +311,13 @@ exports.editStudent = async (req, res) => {
     });
 
   } catch (error) {
+    console.error(`[Admin] Error updating student ${req.params.Id}:`, error);
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+      return res.status(400).json({ 
+        message: `${field.charAt(0).toUpperCase() + field.slice(1)} already registered to another student.` 
+      });
+    }
     return res.status(500).json({ message: "Error updating student", error: error.message });
   }
 };

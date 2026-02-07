@@ -19,6 +19,9 @@ const syllabusSchema = new mongoose.Schema({
     name: String,
     code: String,
     credits: Number,
+    internalMarks: { type: Number, default: 30 },
+    externalMarks: { type: Number, default: 70 },
+    totalMarks: { type: Number, default: 100 },
     difficulty: String,
     color: String,
     bg: String

@@ -131,6 +131,14 @@ exports.teacherLogin = async (req, res) => {
     if (!isMatch) 
       return res.status(400).json({ message: "Incorrect password" });
 
+    // Check if blocked
+    if (teacher.isBlocked) {
+      return res.status(403).json({ 
+        message: "Account blocked", 
+        reason: "Your account has been blocked by the admin." 
+      });
+    }
+
     // Generate JWT token
     const token = jwt.sign(
       { id: teacher._id,
@@ -241,7 +249,7 @@ exports.addMark = async (req, res) => {
     let totalPoints = 0;
 
     const gradePoints = {
-      "A+": 10, "A": 9, "B": 8, "C": 7, "D": 6, "F": 0
+      "O": 10, "A+": 9, "A": 8, "B+": 7, "B": 6, "C": 5, "P": 4, "F": 0
     };
 
     subjects.forEach(sub => {
@@ -251,14 +259,20 @@ exports.addMark = async (req, res) => {
     const sgpa = totalSubjects ? (totalPoints / totalSubjects).toFixed(2) : 0;
 
     // Calculate overall grade
-    const avgPoint = sgpa;
-    let totalGrade = "N/A";
-    if (avgPoint >= 9) totalGrade = "A+";
-    else if (avgPoint >= 8) totalGrade = "A";
-    else if (avgPoint >= 7) totalGrade = "B";
-    else if (avgPoint >= 6) totalGrade = "C";
-    else if (avgPoint >= 5) totalGrade = "D";
+    const avgPoint = parseFloat(sgpa);
+    let totalGrade = "F";
+    if (avgPoint >= 9.5) totalGrade = "O";
+    else if (avgPoint >= 8.5) totalGrade = "A+";
+    else if (avgPoint >= 7.5) totalGrade = "A";
+    else if (avgPoint >= 6.5) totalGrade = "B+";
+    else if (avgPoint >= 5.5) totalGrade = "B";
+    else if (avgPoint >= 4.5) totalGrade = "C";
+    else if (avgPoint >= 4.0) totalGrade = "P";
     else totalGrade = "F";
+
+    // Determine status: Need SGPA >= 4.0 and NO 'F' grades in subjects
+    const hasFailedSubject = subjects.some(sub => sub.grade === 'F');
+    const calculatedStatus = (!hasFailedSubject && avgPoint >= 4.0) ? 'passed' : 'failed';
 
     const mark = new Mark({
       student: studentId,
@@ -269,7 +283,7 @@ exports.addMark = async (req, res) => {
       totalGrade,
       academicYear,
       attendancePercentage,
-      status
+      status: calculatedStatus
     });
 
     await mark.save();
