@@ -5,7 +5,7 @@ const Mark = require("../Models/marks");
 const Student = require("../Models/User");
 const User=require("../Models/User")
 
-const sendEmail = require("../config/mail");
+const { sendEmail } = require("../config/mail");
 const Notification = require("../Models/Notification");
 const Syllabus = require("../Models/Syllabus");
 

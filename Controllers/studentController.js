@@ -3,7 +3,7 @@ const Mark = require("../Models/marks");
 const Teacher = require("../Models/Teacher");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const emailtransporter = require("../config/mail");
+const { sendEmail: emailtransporter } = require("../config/mail");
 const dotenv = require("dotenv");
 dotenv.config();
 
