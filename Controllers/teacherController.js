@@ -12,6 +12,7 @@ const Syllabus = require("../Models/Syllabus");
 /**
  * Helper to create and emit notification for low attendance
  */
+
 const checkAndNotifyLowAttendance = async (studentId, semester, attendancePercentage) => {
   if (attendancePercentage && attendancePercentage < 40) {
     try {

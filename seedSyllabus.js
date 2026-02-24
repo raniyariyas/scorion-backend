@@ -261,11 +261,11 @@ const PROGRAMME_DATA = {
 };
 
 // Map BCom variants
-['Bcom Co-operation Honours', 'Bcom Computer Application', 'Bcom Finance', 'BCom Honours'].forEach(variant => {
+['Bcom Co-operation Honours', 'Bcom Computer Application', 'Bcom Finance'].forEach(variant => {
     const isCoop = variant.includes('Co-operation');
     const isComp = variant.includes('Computer');
     const isProf = variant.includes('Professional');
-    const codePrefix = isCoop ? 'COP' : (isComp ? 'COM' : (variant === 'BCom Honours' ? 'COM' : 'COP'));
+    const codePrefix = isCoop ? 'COP' : (isComp ? 'COM' : 'FIN');
     
     PROGRAMME_DATA[variant] = {
         '1': [
@@ -289,11 +289,11 @@ const PROGRAMME_DATA = {
 
 // Simplified DEPARTMENTS mapping for automatic generation of other courses
 const DEPARTMENTS = {
-    'Computer Science': ['BCA Honours'],
-    'Arts & Humanities': ['BA English Language and Literature Honours', 'BA Economics', 'MA English'],
+    'Computer Science': ['BCA Honours', 'BSc Computer Science', 'BSc Information Technology', 'MSc Computer Science', 'MCA (Master of Computer Applications)'],
+    'Commerce': ['Bcom Finance', 'Bcom Computer Application', 'Bcom Co-operation Honours', 'Mcom Finance'],
     'Business Administration': ['BBA Honours'],
     'Physics': ['BSC Physics'],
-    'Commerce': ['Bcom Co-operation Honours', 'Bcom Computer Application', 'Bcom Finance', 'Mcom Finance'],
+    'Arts & Humanities': ['BA English Language and Literature Honours', 'BA Economics', 'MA English', 'BA Malayalam', 'BA Sociology', 'BA History'],
     'AI': ['B.Sc. ARTIFICIAL INTELLIGENCE (HONOURS)']
 };
 
@@ -355,6 +355,7 @@ const seedDB = async () => {
             }
         }
 
+        console.log(`Generated ${syllabusEntries.length} entries. Starting injection...`);
         const result = await Syllabus.insertMany(syllabusEntries);
         console.log(`Successfully injected ${result.length} curriculum matrices.`);
         process.exit(0);

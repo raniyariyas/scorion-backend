@@ -33,8 +33,11 @@ exports.getSyllabusBySemester = async (req, res) => {
       title = syllabus.title;
       description = syllabus.description;
     } else {
-      // Fallback: try general syllabus if course-specific not found
-      const fallback = await Syllabus.findOne({ semester });
+      // Fallback: try to find any syllabus for the same department first
+      const fallback = await Syllabus.findOne({ 
+        semester,
+        department: user.department
+      });
       if (fallback) {
         combinedSubjects = [...fallback.subjects];
         title = fallback.title;
@@ -83,7 +86,6 @@ exports.getAllSyllabus = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-
     const syllabus = await Syllabus.find({ 
       course: user.course,
       department: user.department 
