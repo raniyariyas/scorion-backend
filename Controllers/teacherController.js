@@ -20,13 +20,13 @@ const checkAndNotifyLowAttendance = async (studentId, semester, attendancePercen
       const notification = await Notification.create({
         student: studentId,
         type: 'attendance_warning',
-        title: '⚠️ Critical Attendance Alert',
+        title: ' Critical Attendance Alert',
         message: `Your attendance for Semester ${semester} is critically low at ${attendancePercentage}%. You need at least 75% attendance to be eligible for exams. Please contact your faculty immediately.`,
         severity: 'critical',
         relatedSemester: semester
       });
       
-      console.log(`✅ Database notification created for student ${studentId}`);
+      console.log(` Database notification created for student ${studentId}`);
       
       // 2. Real-time push via Socket.IO
       try {
@@ -36,8 +36,8 @@ const checkAndNotifyLowAttendance = async (studentId, semester, attendancePercen
           
           // Debugging: Log all connected IDs to help find mismatches
           const connectedUserIdsArray = Array.from(connectedUsers.keys());
-          console.log('🔍 Socket Map check - Target:', studentIdStr);
-          console.log('🔍 Connected User IDs:', connectedUserIdsArray);
+          console.log(' Socket Map check - Target:', studentIdStr);
+          console.log(' Connected User IDs:', connectedUserIdsArray);
           
           const studentSocketId = connectedUsers.get(studentIdStr);
           
@@ -46,18 +46,18 @@ const checkAndNotifyLowAttendance = async (studentId, semester, attendancePercen
               notification: notification,
               message: 'You have a new notification!'
             });
-            console.log(`✅ Real-time notification SENT to socket ${studentSocketId}`);
+            console.log(` Real-time notification SENT to socket ${studentSocketId}`);
           } else {
-            console.log(`⚠️ Student ${studentIdStr} not currently connected (socket not found in map)`);
+            console.log(` Student ${studentIdStr} not currently connected (socket not found in map)`);
           }
         } else {
-          console.log('❌ Socket.io or connectedUsers map not available from server.js');
+          console.log(' Socket.io or connectedUsers map not available from server.js');
         }
       } catch (socketError) {
-        console.error('❌ Socket emit error:', socketError.message);
+        console.error(' Socket emit error:', socketError.message);
       }
     } catch (dbError) {
-      console.error('❌ Notification creation error:', dbError.message);
+      console.error(' Notification creation error:', dbError.message);
     }
   }
 };
