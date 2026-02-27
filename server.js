@@ -79,7 +79,7 @@ app.use("/api/teacher", teacherRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/user", userRoutes);
 
-app.get("/ping", (req, res) => res.send("pong"));
+app.get("/health", (req, res) => res.send("health ok"));
 
 // Start Server
 const PORT = process.env.PORT || 5000;
