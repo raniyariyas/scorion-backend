@@ -4,9 +4,7 @@ dotenv.config();
 
 const createTransporter = () => {
   return nodemailer.createTransport({
-    host: "79.smtp-relay.brevo.com", // Updated for Brevo
-    port: 587,
-    secure: false, // Port 587 uses STARTTLS
+    service: "gmail",
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS
@@ -16,8 +14,6 @@ const createTransporter = () => {
     }
   });
 };
-
-
 
 const baseTemplate = (content, name, subject) => `
 <!DOCTYPE html>
