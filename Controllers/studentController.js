@@ -72,8 +72,8 @@ exports.studentregistration=async(req,res)=>{
                 otpExpiry
             });
 
-            // await emailtransporter(email, otp); // Optionally await email
-            emailtransporter(email, otp);
+            // await emailtransporter(email, otp); 
+            await emailtransporter(email, otp);
         
             await newUser.save();
             console.log(newUser, "User saved successfully");

@@ -165,7 +165,12 @@ const sendEmail = async (email, otp, name = "User", subject = "OTP Verification"
 
     console.log(`OTP Email sent to ${email}`);
   } catch (error) {
-    console.log("Email error:", error);
+    console.error("Email error Details:", {
+      message: error.message,
+      code: error.code,
+      command: error.command,
+      stack: error.stack
+    });
   }
 };
 
@@ -174,7 +179,8 @@ const sendAccountCreationEmail = async (email, name, role, token) => {
   try {
     const transporter = createTransporter();
     const subject = `Welcome to SCORION - Initialize Your ${role === 'teacher' ? 'Faculty' : 'Student'} Account`;
-    const createPassUrl = `http://localhost:5173/createpass/${token}`;
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+    const createPassUrl = `${frontendUrl}/createpass/${token}`;
 
     const content = `
       <p>Welcome to the <span class="highlight">SCORION Intelligence Network</span>. Your ${role} profile has been successfully initialized by the administrative department.</p>
@@ -198,7 +204,11 @@ const sendAccountCreationEmail = async (email, name, role, token) => {
 
     console.log(`Account Creation Email sent to ${email}`);
   } catch (error) {
-    console.log("Email error:", error);
+    console.error("Account Creation Email error Details:", {
+      message: error.message,
+      code: error.code,
+      stack: error.stack
+    });
   }
 };
 
