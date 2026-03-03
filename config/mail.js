@@ -2,6 +2,7 @@ const nodemailer = require("nodemailer");
 const dotenv = require("dotenv");
 dotenv.config();
 
+
 const createTransporter = () => {
   return nodemailer.createTransport({
     service: "gmail",
@@ -175,6 +176,8 @@ const sendEmail = async (email, otp, name = "User", subject = "OTP Verification"
 };
 
 // New Account Creation Function
+console.log(process.env.FRONTEND_URL,"url")
+
 const sendAccountCreationEmail = async (email, name, role, token) => {
   try {
     const transporter = createTransporter();
