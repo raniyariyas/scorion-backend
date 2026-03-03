@@ -156,9 +156,10 @@ const sendEmail = async (email, otp, name = "User", subject = "OTP Verification"
     `;
 
     const htmlContent = baseTemplate(content, name, subject);
+console.log(process.env.EMAIL_USER,";");
 
     await transporter.sendMail({
-      from: `"Scorion Network" <${process.env.EMAIL_USER}>`,
+      from: `"Scorion Network" <fasalgafoor2080@gmail.com>`,
       to: email,
       subject: subject,
       text: `Your OTP for SCORION verification is: ${otp}`,
