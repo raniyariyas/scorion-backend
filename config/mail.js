@@ -6,7 +6,7 @@ dotenv.config();
 const createTransporter = () => {
   return nodemailer.createTransport({
     host: "smtp-relay.brevo.com",
-    port: 587,
+    port: 2525, // Port 2525 is often open when 587 is blocked
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS
@@ -156,7 +156,6 @@ const sendEmail = async (email, otp, name = "User", subject = "OTP Verification"
     `;
 
     const htmlContent = baseTemplate(content, name, subject);
-console.log(process.env.EMAIL_USER,";");
 
     await transporter.sendMail({
       from: `"Scorion Network" <fasalgafoor2080@gmail.com>`,
@@ -178,7 +177,6 @@ console.log(process.env.EMAIL_USER,";");
 };
 
 // New Account Creation Function
-console.log(process.env.FRONTEND_URL,"url")
 
 const sendAccountCreationEmail = async (email, name, role, token) => {
   try {
@@ -200,7 +198,7 @@ const sendAccountCreationEmail = async (email, name, role, token) => {
     const htmlContent = baseTemplate(content, name, subject);
 
     await transporter.sendMail({
-      from: `"Scorion Registry" <${process.env.EMAIL_USER}>`,
+      from: `"Scorion Registry" <fasalgafoor2080@gmail.com>`,
       to: email,
       subject: subject,
       text: `Welcome to SCORION! Please set your password here: ${createPassUrl}`,
